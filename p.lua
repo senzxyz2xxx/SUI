@@ -271,7 +271,7 @@ end
 function Library:PlaySplash(onComplete, windowSize)
     local screenSize = Camera.ViewportSize
     local isMobile = isMobileDevice() or screenSize.X < 800
-    local splashSize = windowSize or (isMobile and UDim2.new(0.92, 0, 0.88, 0) or UDim2.fromOffset(1120, 720))
+    local splashSize = windowSize or (isMobile and UDim2.new(0.85, 0, 0.8, 0) or UDim2.fromOffset(1120, 720))
 
     local Overlay = Instance.new("Frame")
     Overlay.Name = "SplashFrame"
@@ -409,8 +409,10 @@ function Library:CreateWindow(config)
     
     local screenSize = Camera.ViewportSize
     local isMobile = isMobileDevice() or screenSize.X < 800
-    local defaultSize = config.Size or (isMobile and UDim2.new(0.92, 0, 0.88, 0) or UDim2.fromOffset(1120, 720))
-    local sidebarWidth = isMobile and 220 or 310
+    
+    -- ปรับขนาดหน้าต่างให้เล็กลงและพอดีกับหน้าจอมือถือ (เช่น 85% ของจอ และซ่อน Sidebar อัตโนมัติในมือถือ)
+    local defaultSize = config.Size or (isMobile and UDim2.new(0.85, 0, 0.8, 0) or UDim2.fromOffset(1120, 720))
+    local sidebarWidth = isMobile and 170 or 310
 
     local savedColor = self:AutoLoadColor()
 
@@ -420,7 +422,7 @@ function Library:CreateWindow(config)
         CurrentTab = nil,
         IsMinimized = false,
         IsFullyClosed = false,
-        SidebarCollapsed = false,
+        SidebarCollapsed = isMobile, -- มือถือจะพับ Sidebar ซ่อนไว้เริ่มต้นเพื่อให้เนื้อหากว้างเต็มจอ
         SidebarCards = {},
         ThemeUpdateCallbacks = {},
         SidebarWidth = sidebarWidth
@@ -593,7 +595,7 @@ function Library:CreateWindow(config)
 
     local Sidebar = Instance.new("Frame")
     Sidebar.Name = "Sidebar"
-    Sidebar.Size = UDim2.new(0, sidebarWidth, 1, -52)
+    Sidebar.Size = UDim2.new(0, WindowObj.SidebarCollapsed and 0 or sidebarWidth, 1, -52)
     Sidebar.Position = UDim2.new(0, 0, 0, 52)
     Sidebar.BackgroundColor3 = self.Theme.BG_Panel
     Sidebar.BorderSizePixel = 0
@@ -624,8 +626,8 @@ function Library:CreateWindow(config)
 
     local ContentArea = Instance.new("Frame")
     ContentArea.Name = "ContentArea"
-    ContentArea.Size = UDim2.new(1, -sidebarWidth, 1, -52)
-    ContentArea.Position = UDim2.new(0, sidebarWidth, 0, 52)
+    ContentArea.Size = WindowObj.SidebarCollapsed and UDim2.new(1, 0, 1, -52) or UDim2.new(1, -sidebarWidth, 1, -52)
+    ContentArea.Position = WindowObj.SidebarCollapsed and UDim2.new(0, 0, 0, 52) or UDim2.new(0, sidebarWidth, 0, 52)
     ContentArea.BackgroundTransparency = 1
     ContentArea.Parent = MainFrame
 
@@ -1080,7 +1082,7 @@ function Library:CreateWindow(config)
         local TabObj = {}
 
         local NavBtn = Instance.new("TextButton")
-        NavBtn.Size = isMobile and UDim2.new(0, 100, 0, 32) or UDim2.new(0, 125, 0, 32)
+        NavBtn.Size = isMobile and UDim2.new(0, 95, 0, 32) or UDim2.new(0, 125, 0, 32)
         NavBtn.BackgroundColor3 = Library.Theme.BG_Surface
         NavBtn.Text = tabName
         NavBtn.Font = Enum.Font.GothamBlack
