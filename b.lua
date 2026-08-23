@@ -25,8 +25,6 @@ local Library = {
     SupportedGames = {},
     _LoaderFetched = false,
     _CachedSupportedGames = nil,
-    _SplashActive = false,
-    _PendingWindow = nil,
     Theme = {
         BG_Dark        = Color3.fromRGB(8, 8, 13),
         BG_Panel       = Color3.fromRGB(13, 13, 20),
@@ -266,7 +264,6 @@ function Library:Notify(title, desc, duration, statusType)
 end
 
 function Library:PlaySplash(onComplete, windowSize)
-    self._SplashActive = true
     local splashSize = windowSize or UDim2.fromOffset(560, 360)
 
     local Overlay = Instance.new("Frame")
@@ -381,6 +378,8 @@ function Library:PlaySplash(onComplete, windowSize)
         TweenService:Create(ProgressFill, TweenInfo.new(0.3), {Size = UDim2.new(1.0, 0, 1, 0)}):Play()
         task.wait(0.3)
 
+        if onComplete then onComplete() end
+
         TweenService:Create(Overlay, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
         TweenService:Create(Banner, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
         TweenService:Create(IntroLogo, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
@@ -389,30 +388,18 @@ function Library:PlaySplash(onComplete, windowSize)
         TweenService:Create(ProgressBG, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
         TweenService:Create(ProgressFill, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
         TweenService:Create(StatusTxt, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-        task.wait(0.35)
+        task.wait(0.3)
         Overlay:Destroy()
-
-        self._SplashActive = false
-
-        if onComplete then onComplete() end
-
-        if self._PendingWindow then
-            self:ShowPlatformSelector(function(selectedPlatform)
-                self._PendingWindow._ApplyPlatformMode(selectedPlatform)
-            end)
-        end
     end)
 end
 
 function Library:ShowPlatformSelector(onSelect)
-    local savedColor = self:AutoLoadColor()
-
     local SelectorFrame = Instance.new("Frame")
     SelectorFrame.Name = "PlatformSelectorPopup"
     SelectorFrame.Size = UDim2.fromOffset(360, 200)
     SelectorFrame.Position = UDim2.fromScale(0.5, 0.5)
     SelectorFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    SelectorFrame.BackgroundColor3 = self.Theme.BG_Dark
+    SelectorFrame.BackgroundColor3 = self.Theme.BG_Panel
     SelectorFrame.BorderSizePixel = 0
     SelectorFrame.ClipsDescendants = true
     SelectorFrame.ZIndex = 300
@@ -420,8 +407,8 @@ function Library:ShowPlatformSelector(onSelect)
     Instance.new("UICorner", SelectorFrame).CornerRadius = UDim.new(0, 12)
 
     local SelectorStroke = Instance.new("UIStroke")
-    SelectorStroke.Color = savedColor
-    SelectorStroke.Thickness = 1.5
+    SelectorStroke.Color = self.Theme.Accent_Main
+    SelectorStroke.Thickness = 2
     SelectorStroke.Parent = SelectorFrame
 
     local Title = Instance.new("TextLabel")
@@ -498,7 +485,7 @@ function Library:ShowPlatformSelector(onSelect)
     end
 
     PCBtn.MouseEnter:Connect(function()
-        TweenService:Create(PCBtn, TweenInfo.new(0.2), {BackgroundColor3 = savedColor}):Play()
+        TweenService:Create(PCBtn, TweenInfo.new(0.2), {BackgroundColor3 = self.Theme.Accent_Main}):Play()
     end)
     PCBtn.MouseLeave:Connect(function()
         TweenService:Create(PCBtn, TweenInfo.new(0.2), {BackgroundColor3 = self.Theme.BG_Surface}):Play()
@@ -506,7 +493,7 @@ function Library:ShowPlatformSelector(onSelect)
     PCBtn.MouseButton1Click:Connect(function() handleSelection("PC") end)
 
     MobileBtn.MouseEnter:Connect(function()
-        TweenService:Create(MobileBtn, TweenInfo.new(0.2), {BackgroundColor3 = savedColor}):Play()
+        TweenService:Create(MobileBtn, TweenInfo.new(0.2), {BackgroundColor3 = self.Theme.Accent_Main}):Play()
     end)
     MobileBtn.MouseLeave:Connect(function()
         TweenService:Create(MobileBtn, TweenInfo.new(0.2), {BackgroundColor3 = self.Theme.BG_Surface}):Play()
@@ -1132,16 +1119,7 @@ function Library:CreateWindow(config)
 
             local ping = 0
             pcall(function()
-                local network = StatsService:FindFirstChild("Network")
-                if network then
-                    local serverStats = network:FindFirstChild("ServerStatsItem")
-                    if serverStats then
-                        local dataPing = serverStats:FindFirstChild("Data Ping")
-                        if dataPing then
-                            ping = math.floor(dataPing:GetValue())
-                        end
-                    end
-                end
+                ping = math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue())
             end)
 
             FPSTxt.Text = tostring(fps)
@@ -1212,8 +1190,6 @@ function Library:CreateWindow(config)
         end
         MainFrame.Visible = true
     end
-
-    WindowObj._ApplyPlatformMode = applyPlatformMode
 
     function WindowObj:CreateTab(tabConfig)
         tabConfig = tabConfig or {}
@@ -1768,13 +1744,20 @@ function Library:CreateWindow(config)
         end
     })
 
-    if self._SplashActive then
-        self._PendingWindow = WindowObj
-    else
-        self:ShowPlatformSelector(function(selectedPlatform)
-            applyPlatformMode(selectedPlatform)
-        end)
-    end
+    local SettingsControlSec = SettingsTab:AddSection("Interface Controls")
+
+    SettingsControlSec:AddButton({
+        Name = "Unload Framework UI",
+        Callback = function()
+            for _, conn in ipairs(Library.Connections) do if conn and conn.Connected then conn:Disconnect() end end
+            Library.Connections = {}
+            RootGui:Destroy()
+        end
+    })
+
+    self:ShowPlatformSelector(function(selectedPlatform)
+        applyPlatformMode(selectedPlatform)
+    end)
 
     return WindowObj
 end
