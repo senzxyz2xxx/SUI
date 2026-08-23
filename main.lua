@@ -7,8 +7,10 @@ local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local StatsService = game:GetService("Stats")
+local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera or Workspace:WaitForChild("Camera")
 local StartTime = tick()
 
 local RAW_LOGO_URL   = "https://raw.githubusercontent.com/senzxyz2xxx/SenzyHub/refs/heads/main/senz2.png"
@@ -18,6 +20,7 @@ local Library = {
     Flags = {},
     Connections = {},
     ConfigFolder = "SenzyHubConfigs",
+    ColorSaveFile = "SenzyHubConfigs/accent_color.json",
     LoaderURL = "https://raw.githubusercontent.com/senzxyz2xxx/SenzyHub/refs/heads/main/Loader.lua",
     SupportedGames = {},
     _LoaderFetched = false,
@@ -41,6 +44,34 @@ local Library = {
     },
     Keybinds = { ToggleUI = Enum.KeyCode.RightControl }
 }
+
+function Library:AutoSaveColor(color)
+    if writefile and isfolder and makefolder then
+        if not isfolder(self.ConfigFolder) then makefolder(self.ConfigFolder) end
+        pcall(function()
+            local data = { R = color.R, G = color.G, B = color.B }
+            writefile(self.ColorSaveFile, HttpService:JSONEncode(data))
+        end)
+    end
+end
+
+function Library:AutoLoadColor()
+    if readfile and isfile then
+        if isfile(self.ColorSaveFile) then
+            local success, result = pcall(function()
+                local decoded = HttpService:JSONDecode(readfile(self.ColorSaveFile))
+                if type(decoded) == "table" and decoded.R and decoded.G and decoded.B then
+                    return Color3.new(decoded.R, decoded.G, decoded.B)
+                end
+            end)
+            if success and result then
+                self.Theme.Accent_Main = result
+                return result
+            end
+        end
+    end
+    return self.Theme.Accent_Main
+end
 
 local function detectExecutor()
     if identifyexecutor then
@@ -72,6 +103,11 @@ local function detectPlatform()
         return "Windows"
     end
     return "Windows"
+end
+
+local function isMobileDevice()
+    local platform = detectPlatform()
+    return platform == "Android" or platform == "IOS" or (UserInputService.TouchEnabled and not UserInputService.MouseEnabled)
 end
 
 local function fetchLoaderLua(self)
@@ -164,8 +200,8 @@ RootGui.Parent = (gethui and gethui()) or CoreGui or LocalPlayer:WaitForChild("P
 
 local ToastContainer = Instance.new("Frame")
 ToastContainer.Name = "ToastContainer"
-ToastContainer.Size = UDim2.new(0, 320, 1, -40)
-ToastContainer.Position = UDim2.new(1, -330, 0, 20)
+ToastContainer.Size = isMobileDevice() and UDim2.new(0, 260, 1, -40) or UDim2.new(0, 320, 1, -40)
+ToastContainer.Position = isMobileDevice() and UDim2.new(1, -270, 0, 20) or UDim2.new(1, -330, 0, 20)
 ToastContainer.BackgroundTransparency = 1
 ToastContainer.Parent = RootGui
 
@@ -233,7 +269,9 @@ function Library:Notify(title, desc, duration, statusType)
 end
 
 function Library:PlaySplash(onComplete, windowSize)
-    local splashSize = windowSize or UDim2.fromOffset(1120, 720)
+    local screenSize = Camera.ViewportSize
+    local isMobile = isMobileDevice() or screenSize.X < 800
+    local splashSize = windowSize or (isMobile and UDim2.new(0.92, 0, 0.88, 0) or UDim2.fromOffset(1120, 720))
 
     local Overlay = Instance.new("Frame")
     Overlay.Name = "SplashFrame"
@@ -268,17 +306,17 @@ function Library:PlaySplash(onComplete, windowSize)
     TintLayer.Parent = Overlay
 
     local IntroLogo = createCachedImage(RAW_LOGO_URL, "SENZY_LOGO_CACHE.png", Overlay)
-    IntroLogo.Size = UDim2.fromOffset(110, 110)
-    IntroLogo.Position = UDim2.new(0.5, -55, 0.35, -55)
+    IntroLogo.Size = isMobile and UDim2.fromOffset(80, 80) or UDim2.fromOffset(110, 110)
+    IntroLogo.Position = isMobile and UDim2.new(0.5, -40, 0.3, -40) or UDim2.new(0.5, -55, 0.35, -55)
     IntroLogo.ImageTransparency = 1
     IntroLogo.ZIndex = 204
 
     local IntroTitle = Instance.new("TextLabel")
     IntroTitle.Size = UDim2.new(0, 320, 0, 32)
-    IntroTitle.Position = UDim2.new(0.5, -160, 0.35, 70)
+    IntroTitle.Position = isMobile and UDim2.new(0.5, -160, 0.3, 50) or UDim2.new(0.5, -160, 0.35, 70)
     IntroTitle.Text = "SENZY HUB"
     IntroTitle.Font = Enum.Font.GothamBlack
-    IntroTitle.TextSize = 28
+    IntroTitle.TextSize = isMobile and 22 or 28
     IntroTitle.TextColor3 = self.Theme.Text_Primary
     IntroTitle.TextTransparency = 1
     IntroTitle.BackgroundTransparency = 1
@@ -287,10 +325,10 @@ function Library:PlaySplash(onComplete, windowSize)
 
     local IntroSubtitle = Instance.new("TextLabel")
     IntroSubtitle.Size = UDim2.new(0, 320, 0, 20)
-    IntroSubtitle.Position = UDim2.new(0.5, -160, 0.35, 104)
+    IntroSubtitle.Position = isMobile and UDim2.new(0.5, -160, 0.3, 80) or UDim2.new(0.5, -160, 0.35, 104)
     IntroSubtitle.Text = "Free Script"
     IntroSubtitle.Font = Enum.Font.GothamBold
-    IntroSubtitle.TextSize = 13
+    IntroSubtitle.TextSize = isMobile and 11 or 13
     IntroSubtitle.TextColor3 = self.Theme.Accent_Main
     IntroSubtitle.TextTransparency = 1
     IntroSubtitle.BackgroundTransparency = 1
@@ -298,8 +336,8 @@ function Library:PlaySplash(onComplete, windowSize)
     IntroSubtitle.Parent = Overlay
 
     local ProgressBG = Instance.new("Frame")
-    ProgressBG.Size = UDim2.new(0, 240, 0, 3)
-    ProgressBG.Position = UDim2.new(0.5, -120, 0.35, 148)
+    ProgressBG.Size = UDim2.new(0, 200, 0, 3)
+    ProgressBG.Position = isMobile and UDim2.new(0.5, -100, 0.3, 115) or UDim2.new(0.5, -120, 0.35, 148)
     ProgressBG.BackgroundColor3 = Color3.fromRGB(30, 25, 40)
     ProgressBG.BackgroundTransparency = 1
     ProgressBG.ZIndex = 204
@@ -315,7 +353,7 @@ function Library:PlaySplash(onComplete, windowSize)
 
     local StatusTxt = Instance.new("TextLabel")
     StatusTxt.Size = UDim2.new(0, 320, 0, 20)
-    StatusTxt.Position = UDim2.new(0.5, -160, 0.35, 158)
+    StatusTxt.Position = isMobile and UDim2.new(0.5, -160, 0.3, 122) or UDim2.new(0.5, -160, 0.35, 158)
     StatusTxt.Text = "Initializing UI Library..."
     StatusTxt.Font = Enum.Font.GothamMedium
     StatusTxt.TextSize = 10
@@ -329,7 +367,9 @@ function Library:PlaySplash(onComplete, windowSize)
         TweenService:Create(Banner, TweenInfo.new(0.7), {ImageTransparency = 0.2}):Play()
         TweenService:Create(TintLayer, TweenInfo.new(0.7), {BackgroundTransparency = 0.85}):Play()
         task.wait(0.7)
-        TweenService:Create(IntroLogo, TweenInfo.new(1.1), {ImageTransparency = 0, Size = UDim2.fromOffset(125, 125), Position = UDim2.new(0.5, -62.5, 0.35, -62.5)}):Play()
+        local logoSize = isMobile and UDim2.fromOffset(90, 90) or UDim2.fromOffset(125, 125)
+        local logoPos = isMobile and UDim2.new(0.5, -45, 0.3, -45) or UDim2.new(0.5, -62.5, 0.35, -62.5)
+        TweenService:Create(IntroLogo, TweenInfo.new(1.1), {ImageTransparency = 0, Size = logoSize, Position = logoPos}):Play()
         task.wait(1.1)
         TweenService:Create(IntroTitle, TweenInfo.new(0.6), {TextTransparency = 0}):Play()
         TweenService:Create(IntroSubtitle, TweenInfo.new(0.6), {TextTransparency = 0}):Play()
@@ -362,34 +402,17 @@ function Library:PlaySplash(onComplete, windowSize)
     end)
 end
 
-function Library:SaveConfig(filename)
-    filename = filename or "default_config.json"
-    if writefile and isfolder and makefolder then
-        if not isfolder(self.ConfigFolder) then makefolder(self.ConfigFolder) end
-        pcall(function()
-            writefile(self.ConfigFolder .. "/" .. filename, HttpService:JSONEncode(self.Flags))
-        end)
-    end
-end
-
-function Library:LoadConfig(filename)
-    filename = filename or "default_config.json"
-    if readfile and isfile then
-        local path = self.ConfigFolder .. "/" .. filename
-        if isfile(path) then
-            pcall(function()
-                local decoded = HttpService:JSONDecode(readfile(path))
-                if type(decoded) == "table" then self.Flags = decoded end
-            end)
-        end
-    end
-end
-
 function Library:CreateWindow(config)
     config = config or {}
     local winTitle = config.Title or "SENZY HUB"
     local winSubtitle = config.Subtitle or "Free Script"
-    local defaultSize = config.Size or UDim2.fromOffset(1120, 720)
+    
+    local screenSize = Camera.ViewportSize
+    local isMobile = isMobileDevice() or screenSize.X < 800
+    local defaultSize = config.Size or (isMobile and UDim2.new(0.92, 0, 0.88, 0) or UDim2.fromOffset(1120, 720))
+    local sidebarWidth = isMobile and 220 or 310
+
+    local savedColor = self:AutoLoadColor()
 
     fetchLoaderLua(self)
 
@@ -399,13 +422,15 @@ function Library:CreateWindow(config)
         IsFullyClosed = false,
         SidebarCollapsed = false,
         SidebarCards = {},
-        ThemeUpdateCallbacks = {}
+        ThemeUpdateCallbacks = {},
+        SidebarWidth = sidebarWidth
     }
 
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
     MainFrame.Size = defaultSize
-    MainFrame.Position = UDim2.new(0.5, -defaultSize.X.Offset/2, 0.5, -defaultSize.Y.Offset/2)
+    MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     MainFrame.BackgroundColor3 = self.Theme.BG_Dark
     MainFrame.BorderSizePixel = 0
     MainFrame.ClipsDescendants = true
@@ -428,7 +453,7 @@ function Library:CreateWindow(config)
     Instance.new("UICorner", FloatingWidget).CornerRadius = UDim.new(1, 0)
     
     local WidgetStroke = Instance.new("UIStroke")
-    WidgetStroke.Color = self.Theme.Accent_Main
+    WidgetStroke.Color = savedColor
     WidgetStroke.Thickness = 2
     WidgetStroke.Parent = FloatingWidget
     table.insert(WindowObj.ThemeUpdateCallbacks, function(col) WidgetStroke.Color = col end)
@@ -455,7 +480,7 @@ function Library:CreateWindow(config)
     HamIcon.Position = UDim2.new(0.5, -9, 0.5, -7)
 
     local HeaderTitleFrame = Instance.new("Frame")
-    HeaderTitleFrame.Size = UDim2.new(0, 300, 1, 0)
+    HeaderTitleFrame.Size = UDim2.new(0, 200, 1, 0)
     HeaderTitleFrame.Position = UDim2.new(0, 56, 0, 0)
     HeaderTitleFrame.BackgroundTransparency = 1
     HeaderTitleFrame.Parent = TopBar
@@ -465,7 +490,7 @@ function Library:CreateWindow(config)
     HeaderTitle.Position = UDim2.new(0, 0, 0, 8)
     HeaderTitle.Text = winTitle
     HeaderTitle.Font = Enum.Font.GothamBlack
-    HeaderTitle.TextSize = 16
+    HeaderTitle.TextSize = isMobile and 14 or 16
     HeaderTitle.TextColor3 = self.Theme.Text_Primary
     HeaderTitle.TextXAlignment = Enum.TextXAlignment.Left
     HeaderTitle.BackgroundTransparency = 1
@@ -477,7 +502,7 @@ function Library:CreateWindow(config)
     HeaderSubTitle.Text = winSubtitle
     HeaderSubTitle.Font = Enum.Font.GothamBold
     HeaderSubTitle.TextSize = 10
-    HeaderSubTitle.TextColor3 = self.Theme.Accent_Main
+    HeaderSubTitle.TextColor3 = savedColor
     HeaderSubTitle.TextXAlignment = Enum.TextXAlignment.Left
     HeaderSubTitle.BackgroundTransparency = 1
     HeaderSubTitle.Parent = HeaderTitleFrame
@@ -527,15 +552,15 @@ function Library:CreateWindow(config)
 
     local dragging, dragStart, startPos
     TopBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true dragStart = input.Position startPos = MainFrame.Position
         end
     end)
     TopBar.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
     end)
     table.insert(self.Connections, UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - dragStart
             MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
@@ -568,7 +593,7 @@ function Library:CreateWindow(config)
 
     local Sidebar = Instance.new("Frame")
     Sidebar.Name = "Sidebar"
-    Sidebar.Size = UDim2.new(0, 310, 1, -52)
+    Sidebar.Size = UDim2.new(0, sidebarWidth, 1, -52)
     Sidebar.Position = UDim2.new(0, 0, 0, 52)
     Sidebar.BackgroundColor3 = self.Theme.BG_Panel
     Sidebar.BorderSizePixel = 0
@@ -579,7 +604,7 @@ function Library:CreateWindow(config)
     SidebarScroll.Size = UDim2.new(1, 0, 1, 0)
     SidebarScroll.BackgroundTransparency = 1
     SidebarScroll.ScrollBarThickness = 3
-    SidebarScroll.ScrollBarImageColor3 = self.Theme.Accent_Main
+    SidebarScroll.ScrollBarImageColor3 = savedColor
     SidebarScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     SidebarScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     SidebarScroll.Parent = Sidebar
@@ -599,18 +624,18 @@ function Library:CreateWindow(config)
 
     local ContentArea = Instance.new("Frame")
     ContentArea.Name = "ContentArea"
-    ContentArea.Size = UDim2.new(1, -310, 1, -52)
-    ContentArea.Position = UDim2.new(0, 310, 0, 52)
+    ContentArea.Size = UDim2.new(1, -sidebarWidth, 1, -52)
+    ContentArea.Position = UDim2.new(0, sidebarWidth, 0, 52)
     ContentArea.BackgroundTransparency = 1
     ContentArea.Parent = MainFrame
 
     HamburgerBtn.MouseButton1Click:Connect(function()
         WindowObj.SidebarCollapsed = not WindowObj.SidebarCollapsed
-        local targetWidth = WindowObj.SidebarCollapsed and 0 or 310
+        local targetWidth = WindowObj.SidebarCollapsed and 0 or sidebarWidth
         TweenService:Create(Sidebar, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, targetWidth, 1, -52)}):Play()
         TweenService:Create(ContentArea, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Size = WindowObj.SidebarCollapsed and UDim2.new(1, 0, 1, -52) or UDim2.new(1, -310, 1, -52),
-            Position = WindowObj.SidebarCollapsed and UDim2.new(0, 0, 0, 52) or UDim2.new(0, 310, 0, 52)
+            Size = WindowObj.SidebarCollapsed and UDim2.new(1, 0, 1, -52) or UDim2.new(1, -sidebarWidth, 1, -52),
+            Position = WindowObj.SidebarCollapsed and UDim2.new(0, 0, 0, 52) or UDim2.new(0, sidebarWidth, 0, 52)
         }):Play()
     end)
 
@@ -641,7 +666,7 @@ function Library:CreateWindow(config)
     Instance.new("UICorner", ProfileImgFrame).CornerRadius = UDim.new(1, 0)
 
     local ProfileImgStroke = Instance.new("UIStroke")
-    ProfileImgStroke.Color = self.Theme.Accent_Main
+    ProfileImgStroke.Color = savedColor
     ProfileImgStroke.Thickness = 1.5
     ProfileImgStroke.Parent = ProfileImgFrame
     table.insert(WindowObj.ThemeUpdateCallbacks, function(col) ProfileImgStroke.Color = col end)
@@ -729,18 +754,14 @@ function Library:CreateWindow(config)
     DiscordCardBtn.Text = ""
     DiscordCardBtn.Parent = DiscordCard
 
-    local DiscordIconImg = Instance.new("ImageLabel")
-    DiscordIconImg.Size = UDim2.fromOffset(20, 20)
-    DiscordIconImg.Position = UDim2.new(0, 12, 0.5, -10)
-    DiscordIconImg.Image = "rbxassetid://12128796836"
-    DiscordIconImg.ImageColor3 = Color3.fromRGB(88, 101, 242)
-    DiscordIconImg.BackgroundTransparency = 1
-    DiscordIconImg.Parent = DiscordCard
+    local DiscordLogoImg = createCachedImage(RAW_LOGO_URL, "SENZY_LOGO_CACHE.png", DiscordCard)
+    DiscordLogoImg.Size = UDim2.fromOffset(24, 24)
+    DiscordLogoImg.Position = UDim2.new(0, 12, 0.5, -12)
 
     local DiscordCardTxt = Instance.new("TextLabel")
-    DiscordCardTxt.Size = UDim2.new(1, -44, 1, 0)
-    DiscordCardTxt.Position = UDim2.new(0, 38, 0, 0)
-    DiscordCardTxt.Text = "DISCORD COMMUNITY"
+    DiscordCardTxt.Size = UDim2.new(1, -48, 1, 0)
+    DiscordCardTxt.Position = UDim2.new(0, 42, 0, 0)
+    DiscordCardTxt.Text = "JOIN DISCORD"
     DiscordCardTxt.Font = Enum.Font.GothamBlack
     DiscordCardTxt.TextSize = 11
     DiscordCardTxt.TextColor3 = self.Theme.Text_Primary
@@ -1046,6 +1067,7 @@ function Library:CreateWindow(config)
 
     local function updateAccentTheme(newColor)
         Library.Theme.Accent_Main = newColor
+        Library:AutoSaveColor(newColor)
         for _, cb in ipairs(WindowObj.ThemeUpdateCallbacks) do
             pcall(cb, newColor)
         end
@@ -1058,11 +1080,11 @@ function Library:CreateWindow(config)
         local TabObj = {}
 
         local NavBtn = Instance.new("TextButton")
-        NavBtn.Size = UDim2.new(0, 125, 0, 32)
+        NavBtn.Size = isMobile and UDim2.new(0, 100, 0, 32) or UDim2.new(0, 125, 0, 32)
         NavBtn.BackgroundColor3 = Library.Theme.BG_Surface
         NavBtn.Text = tabName
         NavBtn.Font = Enum.Font.GothamBlack
-        NavBtn.TextSize = 12
+        NavBtn.TextSize = isMobile and 10 or 12
         NavBtn.TextColor3 = Library.Theme.Text_Secondary
         NavBtn.LayoutOrder = isSettings and 9999 or 1
         NavBtn.Parent = TopNav
@@ -1086,9 +1108,9 @@ function Library:CreateWindow(config)
 
         local PagePad = Instance.new("UIPadding")
         PagePad.PaddingTop = UDim.new(0, 14)
-        PagePad.PaddingLeft = UDim.new(0, 16)
-        PagePad.PaddingRight = UDim.new(0, 16)
-        PagePad.PaddingBottom = UDim.new(0, 16)
+        PagePad.PaddingLeft = UDim.new(0, 12)
+        PagePad.PaddingRight = UDim.new(0, 12)
+        PagePad.PaddingBottom = UDim.new(0, 14)
         PagePad.Parent = PageScroll
 
         local SearchFrame = Instance.new("Frame")
@@ -1271,9 +1293,15 @@ function Library:CreateWindow(config)
                     local pos = math.clamp((input.Position.X - BarBG.AbsolutePosition.X) / BarBG.AbsoluteSize.X, 0, 1)
                     local val = math.floor(min + ((max - min) * pos)) Library.Flags[flag] = val ValTxt.Text = tostring(val) BarFill.Size = UDim2.new(pos, 0, 1, 0) pcall(callback, val)
                 end
-                SldBtn.InputBegan:Connect(function(inp) if inp.UserInputType == Enum.UserInputType.MouseButton1 then sliding = true update(inp) end end)
-                UserInputService.InputEnded:Connect(function(inp) if inp.UserInputType == Enum.UserInputType.MouseButton1 then sliding = false end end)
-                UserInputService.InputChanged:Connect(function(inp) if sliding and inp.UserInputType == Enum.UserInputType.MouseMovement then update(inp) end end)
+                SldBtn.InputBegan:Connect(function(inp)
+                    if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then sliding = true update(inp) end
+                end)
+                UserInputService.InputEnded:Connect(function(inp)
+                    if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then sliding = false end
+                end)
+                UserInputService.InputChanged:Connect(function(inp)
+                    if sliding and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then update(inp) end
+                end)
             end
 
             function SecObj:AddDropdown(cfg)
@@ -1285,7 +1313,7 @@ function Library:CreateWindow(config)
 
                 local Txt = Instance.new("TextLabel") Txt.Size = UDim2.new(0, 140, 0, 44) Txt.Position = UDim2.new(0, 12, 0, 0) Txt.Text = name Txt.Font = Enum.Font.GothamBold Txt.TextSize = 12 Txt.TextColor3 = Library.Theme.Text_Primary Txt.TextXAlignment = Enum.TextXAlignment.Left Txt.BackgroundTransparency = 1 Txt.Parent = Card
                 
-                local SelectedVal = Instance.new("TextLabel") SelectedVal.Size = UDim2.new(0, 180, 0, 30) SelectedVal.Position = UDim2.new(1, -212, 0, 7) SelectedVal.BackgroundColor3 = Library.Theme.BG_Container SelectedVal.Text = default SelectedVal.Font = Enum.Font.GothamBold SelectedVal.TextSize = 11 SelectedVal.TextColor3 = Library.Theme.Accent_Glow SelectedVal.Parent = Card Instance.new("UICorner", SelectedVal).CornerRadius = UDim.new(0, 6)
+                local SelectedVal = Instance.new("TextLabel") SelectedVal.Size = UDim2.new(0, 140, 0, 30) SelectedVal.Position = UDim2.new(1, -152, 0, 7) SelectedVal.BackgroundColor3 = Library.Theme.BG_Container SelectedVal.Text = default SelectedVal.Font = Enum.Font.GothamBold SelectedVal.TextSize = 11 SelectedVal.TextColor3 = Library.Theme.Accent_Glow SelectedVal.Parent = Card Instance.new("UICorner", SelectedVal).CornerRadius = UDim.new(0, 6)
                 local DropBtn = Instance.new("TextButton") DropBtn.Size = UDim2.new(1, 0, 0, 44) DropBtn.BackgroundTransparency = 1 DropBtn.Text = "" DropBtn.Parent = Card
 
                 local OptContainer = Instance.new("Frame") OptContainer.Size = UDim2.new(1, -24, 0, #options * 28) OptContainer.Position = UDim2.new(0, 12, 0, 48) OptContainer.BackgroundTransparency = 1 OptContainer.Parent = Card
@@ -1380,8 +1408,8 @@ function Library:CreateWindow(config)
                 local Card = Instance.new("Frame") Card.Size = UDim2.new(1, 0, 0, 44) Card.BackgroundColor3 = Library.Theme.BG_Surface Card.Parent = Container Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 8)
                 table.insert(trackedCards, {Card = Card, Header = SecHeader, Name = name})
 
-                local Txt = Instance.new("TextLabel") Txt.Size = UDim2.new(0, 140, 1, 0) Txt.Position = UDim2.new(0, 12, 0, 0) Txt.Text = name Txt.Font = Enum.Font.GothamBold Txt.TextSize = 12 Txt.TextColor3 = Library.Theme.Text_Primary Txt.TextXAlignment = Enum.TextXAlignment.Left Txt.BackgroundTransparency = 1 Txt.Parent = Card
-                local Input = Instance.new("TextBox") Input.Size = UDim2.new(0, 220, 0, 28) Input.Position = UDim2.new(1, -232, 0.5, -14) Input.BackgroundColor3 = Library.Theme.BG_Container Input.PlaceholderText = placeholder Input.Text = "" Input.Font = Enum.Font.GothamMedium Input.TextSize = 11 Input.TextColor3 = Library.Theme.Text_Primary Input.Parent = Card Instance.new("UICorner", Input).CornerRadius = UDim.new(0, 6)
+                local Txt = Instance.new("TextLabel") Txt.Size = UDim2.new(0, 100, 1, 0) Txt.Position = UDim2.new(0, 12, 0, 0) Txt.Text = name Txt.Font = Enum.Font.GothamBold Txt.TextSize = 12 Txt.TextColor3 = Library.Theme.Text_Primary Txt.TextXAlignment = Enum.TextXAlignment.Left Txt.BackgroundTransparency = 1 Txt.Parent = Card
+                local Input = Instance.new("TextBox") Input.Size = UDim2.new(0, 160, 0, 28) Input.Position = UDim2.new(1, -172, 0.5, -14) Input.BackgroundColor3 = Library.Theme.BG_Container Input.PlaceholderText = placeholder Input.Text = "" Input.Font = Enum.Font.GothamMedium Input.TextSize = 11 Input.TextColor3 = Library.Theme.Text_Primary Input.Parent = Card Instance.new("UICorner", Input).CornerRadius = UDim.new(0, 6)
                 Input.FocusLost:Connect(function(enter) Library.Flags[flag] = Input.Text pcall(callback, Input.Text, enter) end)
             end
 
@@ -1403,8 +1431,8 @@ function Library:CreateWindow(config)
                 local Card = Instance.new("Frame") Card.Size = UDim2.new(1, 0, 0, 44) Card.BackgroundColor3 = Library.Theme.BG_Surface Card.Parent = Container Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 8)
                 table.insert(trackedCards, {Card = Card, Header = SecHeader, Name = name})
 
-                local Txt = Instance.new("TextLabel") Txt.Size = UDim2.new(0, 140, 1, 0) Txt.Position = UDim2.new(0, 12, 0, 0) Txt.Text = name Txt.Font = Enum.Font.GothamBold Txt.TextSize = 12 Txt.TextColor3 = Library.Theme.Text_Primary Txt.TextXAlignment = Enum.TextXAlignment.Left Txt.BackgroundTransparency = 1 Txt.Parent = Card
-                local KeyBtn = Instance.new("TextButton") KeyBtn.Size = UDim2.new(0, 120, 0, 28) KeyBtn.Position = UDim2.new(1, -132, 0.5, -14) KeyBtn.BackgroundColor3 = Library.Theme.BG_Container KeyBtn.Text = defaultKey.Name KeyBtn.Font = Enum.Font.GothamBold KeyBtn.TextSize = 11 KeyBtn.TextColor3 = Library.Theme.Accent_Glow KeyBtn.Parent = Card Instance.new("UICorner", KeyBtn).CornerRadius = UDim.new(0, 6)
+                local Txt = Instance.new("TextLabel") Txt.Size = UDim2.new(0, 120, 1, 0) Txt.Position = UDim2.new(0, 12, 0, 0) Txt.Text = name Txt.Font = Enum.Font.GothamBold Txt.TextSize = 12 Txt.TextColor3 = Library.Theme.Text_Primary Txt.TextXAlignment = Enum.TextXAlignment.Left Txt.BackgroundTransparency = 1 Txt.Parent = Card
+                local KeyBtn = Instance.new("TextButton") KeyBtn.Size = UDim2.new(0, 100, 0, 28) KeyBtn.Position = UDim2.new(1, -112, 0.5, -14) KeyBtn.BackgroundColor3 = Library.Theme.BG_Container KeyBtn.Text = defaultKey.Name KeyBtn.Font = Enum.Font.GothamBold KeyBtn.TextSize = 11 KeyBtn.TextColor3 = Library.Theme.Accent_Glow KeyBtn.Parent = Card Instance.new("UICorner", KeyBtn).CornerRadius = UDim.new(0, 6)
                 KeyBtn.MouseButton1Click:Connect(function()
                     KeyBtn.Text = "Press Key..." local conn
                     conn = UserInputService.InputBegan:Connect(function(input)
@@ -1416,7 +1444,7 @@ function Library:CreateWindow(config)
             function SecObj:AddColorPicker(cfg)
                 cfg = cfg or {}
                 local name = cfg.Name or "Color Picker"
-                local defaultColor = cfg.Default or Library.Theme.Accent_Main
+                local defaultColor = savedColor or cfg.Default or Library.Theme.Accent_Main
                 local flag = cfg.Flag or name
                 local callback = cfg.Callback or function() end
 
@@ -1434,7 +1462,7 @@ function Library:CreateWindow(config)
                 table.insert(trackedCards, {Card = Card, Header = SecHeader, Name = name})
 
                 local Txt = Instance.new("TextLabel")
-                Txt.Size = UDim2.new(0, 180, 0, 44)
+                Txt.Size = UDim2.new(0, 140, 0, 44)
                 Txt.Position = UDim2.new(0, 12, 0, 0)
                 Txt.Text = name
                 Txt.Font = Enum.Font.GothamBold
@@ -1535,22 +1563,22 @@ function Library:CreateWindow(config)
 
                 local slidingHue = false
                 HueBtn.InputBegan:Connect(function(inp)
-                    if inp.UserInputType == Enum.UserInputType.MouseButton1 then slidingHue = true end
+                    if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then slidingHue = true end
                 end)
 
                 local slidingVal = false
                 ValBtn.InputBegan:Connect(function(inp)
-                    if inp.UserInputType == Enum.UserInputType.MouseButton1 then slidingVal = true end
+                    if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then slidingVal = true end
                 end)
 
                 UserInputService.InputEnded:Connect(function(inp)
-                    if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+                    if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
                         slidingHue = false slidingVal = false
                     end
                 end)
 
                 UserInputService.InputChanged:Connect(function(inp)
-                    if inp.UserInputType == Enum.UserInputType.MouseMovement then
+                    if inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch then
                         if slidingHue then
                             h = math.clamp((inp.Position.X - HueBar.AbsolutePosition.X) / HueBar.AbsoluteSize.X, 0, 1)
                             HueKnob.Position = UDim2.new(h, -5, 0, -2)
@@ -1591,32 +1619,16 @@ function Library:CreateWindow(config)
 
     SettingsThemeSec:AddColorPicker({
         Name = "Primary Accent Color",
-        Default = Library.Theme.Accent_Main,
+        Default = savedColor,
         Flag = "AccentColorPicker",
         Callback = function(newCol)
             updateAccentTheme(newCol)
         end
     })
 
-    local SettingsConfigSec = SettingsTab:AddSection("Config Management")
+    local SettingsControlSec = SettingsTab:AddSection("Interface Controls")
 
-    SettingsConfigSec:AddButton({
-        Name = "Save Current Config",
-        Callback = function()
-            Library:SaveConfig("default_config.json")
-            Library:Notify("Config Engine", "Saved settings to default_config.json", 3, "Success")
-        end
-    })
-
-    SettingsConfigSec:AddButton({
-        Name = "Load Saved Config",
-        Callback = function()
-            Library:LoadConfig("default_config.json")
-            Library:Notify("Config Engine", "Loaded configuration successfully!", 3, "Success")
-        end
-    })
-
-    SettingsConfigSec:AddButton({
+    SettingsControlSec:AddButton({
         Name = "Unload Framework UI",
         Callback = function()
             for _, conn in ipairs(Library.Connections) do if conn and conn.Connected then conn:Disconnect() end end
