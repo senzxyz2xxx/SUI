@@ -25,6 +25,8 @@ local Library = {
     SupportedGames = {},
     _LoaderFetched = false,
     _CachedSupportedGames = nil,
+    _SplashActive = false,
+    _PendingWindow = nil,
     Theme = {
         BG_Dark        = Color3.fromRGB(8, 8, 13),
         BG_Panel       = Color3.fromRGB(13, 13, 20),
@@ -103,11 +105,6 @@ local function detectPlatform()
         return "Windows"
     end
     return "Windows"
-end
-
-local function isMobileDevice()
-    local platform = detectPlatform()
-    return platform == "Android" or platform == "IOS" or (UserInputService.TouchEnabled and not UserInputService.MouseEnabled)
 end
 
 local function fetchLoaderLua(self)
@@ -200,8 +197,8 @@ RootGui.Parent = (gethui and gethui()) or CoreGui or LocalPlayer:WaitForChild("P
 
 local ToastContainer = Instance.new("Frame")
 ToastContainer.Name = "ToastContainer"
-ToastContainer.Size = isMobileDevice() and UDim2.new(0, 260, 1, -40) or UDim2.new(0, 320, 1, -40)
-ToastContainer.Position = isMobileDevice() and UDim2.new(1, -270, 0, 20) or UDim2.new(1, -330, 0, 20)
+ToastContainer.Size = UDim2.new(0, 280, 1, -40)
+ToastContainer.Position = UDim2.new(1, -290, 0, 20)
 ToastContainer.BackgroundTransparency = 1
 ToastContainer.Parent = RootGui
 
@@ -269,9 +266,8 @@ function Library:Notify(title, desc, duration, statusType)
 end
 
 function Library:PlaySplash(onComplete, windowSize)
-    local screenSize = Camera.ViewportSize
-    local isMobile = isMobileDevice() or screenSize.X < 800
-    local splashSize = windowSize or (isMobile and UDim2.new(0.92, 0, 0.88, 0) or UDim2.fromOffset(1120, 720))
+    self._SplashActive = true
+    local splashSize = windowSize or UDim2.fromOffset(560, 360)
 
     local Overlay = Instance.new("Frame")
     Overlay.Name = "SplashFrame"
@@ -306,17 +302,17 @@ function Library:PlaySplash(onComplete, windowSize)
     TintLayer.Parent = Overlay
 
     local IntroLogo = createCachedImage(RAW_LOGO_URL, "SENZY_LOGO_CACHE.png", Overlay)
-    IntroLogo.Size = isMobile and UDim2.fromOffset(80, 80) or UDim2.fromOffset(110, 110)
-    IntroLogo.Position = isMobile and UDim2.new(0.5, -40, 0.3, -40) or UDim2.new(0.5, -55, 0.35, -55)
+    IntroLogo.Size = UDim2.fromOffset(80, 80)
+    IntroLogo.Position = UDim2.new(0.5, -40, 0.3, -40)
     IntroLogo.ImageTransparency = 1
     IntroLogo.ZIndex = 204
 
     local IntroTitle = Instance.new("TextLabel")
     IntroTitle.Size = UDim2.new(0, 320, 0, 32)
-    IntroTitle.Position = isMobile and UDim2.new(0.5, -160, 0.3, 50) or UDim2.new(0.5, -160, 0.35, 70)
+    IntroTitle.Position = UDim2.new(0.5, -160, 0.3, 50)
     IntroTitle.Text = "SENZY HUB"
     IntroTitle.Font = Enum.Font.GothamBlack
-    IntroTitle.TextSize = isMobile and 22 or 28
+    IntroTitle.TextSize = 22
     IntroTitle.TextColor3 = self.Theme.Text_Primary
     IntroTitle.TextTransparency = 1
     IntroTitle.BackgroundTransparency = 1
@@ -325,10 +321,10 @@ function Library:PlaySplash(onComplete, windowSize)
 
     local IntroSubtitle = Instance.new("TextLabel")
     IntroSubtitle.Size = UDim2.new(0, 320, 0, 20)
-    IntroSubtitle.Position = isMobile and UDim2.new(0.5, -160, 0.3, 80) or UDim2.new(0.5, -160, 0.35, 104)
+    IntroSubtitle.Position = UDim2.new(0.5, -160, 0.3, 80)
     IntroSubtitle.Text = "Free Script"
     IntroSubtitle.Font = Enum.Font.GothamBold
-    IntroSubtitle.TextSize = isMobile and 11 or 13
+    IntroSubtitle.TextSize = 11
     IntroSubtitle.TextColor3 = self.Theme.Accent_Main
     IntroSubtitle.TextTransparency = 1
     IntroSubtitle.BackgroundTransparency = 1
@@ -337,7 +333,7 @@ function Library:PlaySplash(onComplete, windowSize)
 
     local ProgressBG = Instance.new("Frame")
     ProgressBG.Size = UDim2.new(0, 200, 0, 3)
-    ProgressBG.Position = isMobile and UDim2.new(0.5, -100, 0.3, 115) or UDim2.new(0.5, -120, 0.35, 148)
+    ProgressBG.Position = UDim2.new(0.5, -100, 0.3, 115)
     ProgressBG.BackgroundColor3 = Color3.fromRGB(30, 25, 40)
     ProgressBG.BackgroundTransparency = 1
     ProgressBG.ZIndex = 204
@@ -353,7 +349,7 @@ function Library:PlaySplash(onComplete, windowSize)
 
     local StatusTxt = Instance.new("TextLabel")
     StatusTxt.Size = UDim2.new(0, 320, 0, 20)
-    StatusTxt.Position = isMobile and UDim2.new(0.5, -160, 0.3, 122) or UDim2.new(0.5, -160, 0.35, 158)
+    StatusTxt.Position = UDim2.new(0.5, -160, 0.3, 122)
     StatusTxt.Text = "Initializing UI Library..."
     StatusTxt.Font = Enum.Font.GothamMedium
     StatusTxt.TextSize = 10
@@ -367,27 +363,23 @@ function Library:PlaySplash(onComplete, windowSize)
         TweenService:Create(Banner, TweenInfo.new(0.7), {ImageTransparency = 0.2}):Play()
         TweenService:Create(TintLayer, TweenInfo.new(0.7), {BackgroundTransparency = 0.85}):Play()
         task.wait(0.7)
-        local logoSize = isMobile and UDim2.fromOffset(90, 90) or UDim2.fromOffset(125, 125)
-        local logoPos = isMobile and UDim2.new(0.5, -45, 0.3, -45) or UDim2.new(0.5, -62.5, 0.35, -62.5)
-        TweenService:Create(IntroLogo, TweenInfo.new(1.1), {ImageTransparency = 0, Size = logoSize, Position = logoPos}):Play()
+        TweenService:Create(IntroLogo, TweenInfo.new(1.1), {ImageTransparency = 0, Size = UDim2.fromOffset(90, 90), Position = UDim2.new(0.5, -45, 0.3, -45)}):Play()
         task.wait(1.1)
         TweenService:Create(IntroTitle, TweenInfo.new(0.6), {TextTransparency = 0}):Play()
         TweenService:Create(IntroSubtitle, TweenInfo.new(0.6), {TextTransparency = 0}):Play()
         TweenService:Create(ProgressBG, TweenInfo.new(0.6), {BackgroundTransparency = 0.5}):Play()
         TweenService:Create(StatusTxt, TweenInfo.new(0.6), {TextTransparency = 0}):Play()
         
-        task.wait(1.0)
+        task.wait(0.8)
         StatusTxt.Text = "Loading components..."
-        TweenService:Create(ProgressFill, TweenInfo.new(1.5), {Size = UDim2.new(0.5, 0, 1, 0)}):Play()
-        task.wait(1.5)
+        TweenService:Create(ProgressFill, TweenInfo.new(1.0), {Size = UDim2.new(0.5, 0, 1, 0)}):Play()
+        task.wait(1.0)
         StatusTxt.Text = "Preparing interface..."
-        TweenService:Create(ProgressFill, TweenInfo.new(1.5), {Size = UDim2.new(0.9, 0, 1, 0)}):Play()
-        task.wait(1.5)
+        TweenService:Create(ProgressFill, TweenInfo.new(1.0), {Size = UDim2.new(0.9, 0, 1, 0)}):Play()
+        task.wait(1.0)
         StatusTxt.Text = "Ready."
-        TweenService:Create(ProgressFill, TweenInfo.new(0.4), {Size = UDim2.new(1.0, 0, 1, 0)}):Play()
-        task.wait(0.4)
-
-        if onComplete then onComplete() end
+        TweenService:Create(ProgressFill, TweenInfo.new(0.3), {Size = UDim2.new(1.0, 0, 1, 0)}):Play()
+        task.wait(0.3)
 
         TweenService:Create(Overlay, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
         TweenService:Create(Banner, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
@@ -397,23 +389,137 @@ function Library:PlaySplash(onComplete, windowSize)
         TweenService:Create(ProgressBG, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
         TweenService:Create(ProgressFill, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
         TweenService:Create(StatusTxt, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-        task.wait(0.3)
+        task.wait(0.35)
         Overlay:Destroy()
+
+        self._SplashActive = false
+
+        if onComplete then onComplete() end
+
+        if self._PendingWindow then
+            self:ShowPlatformSelector(function(selectedPlatform)
+                self._PendingWindow._ApplyPlatformMode(selectedPlatform)
+            end)
+        end
     end)
+end
+
+function Library:ShowPlatformSelector(onSelect)
+    local savedColor = self:AutoLoadColor()
+
+    local SelectorFrame = Instance.new("Frame")
+    SelectorFrame.Name = "PlatformSelectorPopup"
+    SelectorFrame.Size = UDim2.fromOffset(360, 200)
+    SelectorFrame.Position = UDim2.fromScale(0.5, 0.5)
+    SelectorFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    SelectorFrame.BackgroundColor3 = self.Theme.BG_Dark
+    SelectorFrame.BorderSizePixel = 0
+    SelectorFrame.ClipsDescendants = true
+    SelectorFrame.ZIndex = 300
+    SelectorFrame.Parent = RootGui
+    Instance.new("UICorner", SelectorFrame).CornerRadius = UDim.new(0, 12)
+
+    local SelectorStroke = Instance.new("UIStroke")
+    SelectorStroke.Color = savedColor
+    SelectorStroke.Thickness = 1.5
+    SelectorStroke.Parent = SelectorFrame
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, 0, 0, 30)
+    Title.Position = UDim2.new(0, 0, 0, 18)
+    Title.Text = "SELECT PLATFORM"
+    Title.Font = Enum.Font.GothamBlack
+    Title.TextSize = 16
+    Title.TextColor3 = self.Theme.Text_Primary
+    Title.BackgroundTransparency = 1
+    Title.ZIndex = 301
+    Title.Parent = SelectorFrame
+
+    local Subtitle = Instance.new("TextLabel")
+    Subtitle.Size = UDim2.new(1, 0, 0, 20)
+    Subtitle.Position = UDim2.new(0, 0, 0, 48)
+    Subtitle.Text = "Choose your device mode for best scale"
+    Subtitle.Font = Enum.Font.GothamMedium
+    Subtitle.TextSize = 11
+    Subtitle.TextColor3 = self.Theme.Text_Dark
+    Subtitle.BackgroundTransparency = 1
+    Subtitle.ZIndex = 301
+    Subtitle.Parent = SelectorFrame
+
+    local BtnContainer = Instance.new("Frame")
+    BtnContainer.Size = UDim2.new(1, -40, 0, 80)
+    BtnContainer.Position = UDim2.new(0, 20, 0, 95)
+    BtnContainer.BackgroundTransparency = 1
+    BtnContainer.ZIndex = 301
+    BtnContainer.Parent = SelectorFrame
+
+    local PCBtn = Instance.new("TextButton")
+    PCBtn.Size = UDim2.new(0.48, -5, 1, 0)
+    PCBtn.Position = UDim2.new(0, 0, 0, 0)
+    PCBtn.BackgroundColor3 = self.Theme.BG_Surface
+    PCBtn.Text = "PC"
+    PCBtn.Font = Enum.Font.GothamBlack
+    PCBtn.TextSize = 18
+    PCBtn.TextColor3 = self.Theme.Text_Primary
+    PCBtn.ZIndex = 302
+    PCBtn.Parent = BtnContainer
+    Instance.new("UICorner", PCBtn).CornerRadius = UDim.new(0, 8)
+
+    local PCStroke = Instance.new("UIStroke")
+    PCStroke.Color = self.Theme.Border
+    PCStroke.Thickness = 1
+    PCStroke.Parent = PCBtn
+
+    local MobileBtn = Instance.new("TextButton")
+    MobileBtn.Size = UDim2.new(0.48, -5, 1, 0)
+    MobileBtn.Position = UDim2.new(0.52, 5, 0, 0)
+    MobileBtn.BackgroundColor3 = self.Theme.BG_Surface
+    MobileBtn.Text = "MOBILE"
+    MobileBtn.Font = Enum.Font.GothamBlack
+    MobileBtn.TextSize = 18
+    MobileBtn.TextColor3 = self.Theme.Text_Primary
+    MobileBtn.ZIndex = 302
+    MobileBtn.Parent = BtnContainer
+    Instance.new("UICorner", MobileBtn).CornerRadius = UDim.new(0, 8)
+
+    local MobileStroke = Instance.new("UIStroke")
+    MobileStroke.Color = self.Theme.Border
+    MobileStroke.Thickness = 1
+    MobileStroke.Parent = MobileBtn
+
+    local function handleSelection(mode)
+        TweenService:Create(SelectorFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Size = UDim2.fromOffset(0, 0),
+            BackgroundTransparency = 1
+        }):Play()
+        task.wait(0.25)
+        SelectorFrame:Destroy()
+        if onSelect then onSelect(mode) end
+    end
+
+    PCBtn.MouseEnter:Connect(function()
+        TweenService:Create(PCBtn, TweenInfo.new(0.2), {BackgroundColor3 = savedColor}):Play()
+    end)
+    PCBtn.MouseLeave:Connect(function()
+        TweenService:Create(PCBtn, TweenInfo.new(0.2), {BackgroundColor3 = self.Theme.BG_Surface}):Play()
+    end)
+    PCBtn.MouseButton1Click:Connect(function() handleSelection("PC") end)
+
+    MobileBtn.MouseEnter:Connect(function()
+        TweenService:Create(MobileBtn, TweenInfo.new(0.2), {BackgroundColor3 = savedColor}):Play()
+    end)
+    MobileBtn.MouseLeave:Connect(function()
+        TweenService:Create(MobileBtn, TweenInfo.new(0.2), {BackgroundColor3 = self.Theme.BG_Surface}):Play()
+    end)
+    MobileBtn.MouseButton1Click:Connect(function() handleSelection("MOBILE") end)
 end
 
 function Library:CreateWindow(config)
     config = config or {}
     local winTitle = config.Title or "SENZY HUB"
     local winSubtitle = config.Subtitle or "Free Script"
-    
-    local screenSize = Camera.ViewportSize
-    local isMobile = isMobileDevice() or screenSize.X < 800
-    local defaultSize = config.Size or (isMobile and UDim2.new(0.92, 0, 0.88, 0) or UDim2.fromOffset(1120, 720))
-    local sidebarWidth = isMobile and 220 or 310
 
     local savedColor = self:AutoLoadColor()
-
     fetchLoaderLua(self)
 
     local WindowObj = {
@@ -423,12 +529,13 @@ function Library:CreateWindow(config)
         SidebarCollapsed = false,
         SidebarCards = {},
         ThemeUpdateCallbacks = {},
-        SidebarWidth = sidebarWidth
+        SidebarWidth = 310,
+        IsMobileMode = false
     }
 
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = defaultSize
+    MainFrame.Size = UDim2.fromOffset(1120, 720)
     MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
     MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     MainFrame.BackgroundColor3 = self.Theme.BG_Dark
@@ -490,7 +597,7 @@ function Library:CreateWindow(config)
     HeaderTitle.Position = UDim2.new(0, 0, 0, 8)
     HeaderTitle.Text = winTitle
     HeaderTitle.Font = Enum.Font.GothamBlack
-    HeaderTitle.TextSize = isMobile and 14 or 16
+    HeaderTitle.TextSize = 16
     HeaderTitle.TextColor3 = self.Theme.Text_Primary
     HeaderTitle.TextXAlignment = Enum.TextXAlignment.Left
     HeaderTitle.BackgroundTransparency = 1
@@ -593,7 +700,7 @@ function Library:CreateWindow(config)
 
     local Sidebar = Instance.new("Frame")
     Sidebar.Name = "Sidebar"
-    Sidebar.Size = UDim2.new(0, sidebarWidth, 1, -52)
+    Sidebar.Size = UDim2.new(0, 310, 1, -52)
     Sidebar.Position = UDim2.new(0, 0, 0, 52)
     Sidebar.BackgroundColor3 = self.Theme.BG_Panel
     Sidebar.BorderSizePixel = 0
@@ -624,18 +731,19 @@ function Library:CreateWindow(config)
 
     local ContentArea = Instance.new("Frame")
     ContentArea.Name = "ContentArea"
-    ContentArea.Size = UDim2.new(1, -sidebarWidth, 1, -52)
-    ContentArea.Position = UDim2.new(0, sidebarWidth, 0, 52)
+    ContentArea.Size = UDim2.new(1, -310, 1, -52)
+    ContentArea.Position = UDim2.new(0, 310, 0, 52)
     ContentArea.BackgroundTransparency = 1
     ContentArea.Parent = MainFrame
 
     HamburgerBtn.MouseButton1Click:Connect(function()
         WindowObj.SidebarCollapsed = not WindowObj.SidebarCollapsed
-        local targetWidth = WindowObj.SidebarCollapsed and 0 or sidebarWidth
+        local curWidth = WindowObj.SidebarWidth or 310
+        local targetWidth = WindowObj.SidebarCollapsed and 0 or curWidth
         TweenService:Create(Sidebar, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, targetWidth, 1, -52)}):Play()
         TweenService:Create(ContentArea, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Size = WindowObj.SidebarCollapsed and UDim2.new(1, 0, 1, -52) or UDim2.new(1, -sidebarWidth, 1, -52),
-            Position = WindowObj.SidebarCollapsed and UDim2.new(0, 0, 0, 52) or UDim2.new(0, sidebarWidth, 0, 52)
+            Size = WindowObj.SidebarCollapsed and UDim2.new(1, 0, 1, -52) or UDim2.new(1, -curWidth, 1, -52),
+            Position = WindowObj.SidebarCollapsed and UDim2.new(0, 0, 0, 52) or UDim2.new(0, curWidth, 0, 52)
         }):Play()
     end)
 
@@ -1073,6 +1181,31 @@ function Library:CreateWindow(config)
         end
     end
 
+    local function applyPlatformMode(mode)
+        if mode == "MOBILE" then
+            WindowObj.IsMobileMode = true
+            WindowObj.SidebarWidth = 200
+            MainFrame.Size = UDim2.fromOffset(560, 360)
+            HeaderTitle.TextSize = 13
+            HeaderSubTitle.TextSize = 9
+            Sidebar.Size = UDim2.new(0, 200, 1, -52)
+            ContentArea.Size = UDim2.new(1, -200, 1, -52)
+            ContentArea.Position = UDim2.new(0, 200, 0, 52)
+        else
+            WindowObj.IsMobileMode = false
+            WindowObj.SidebarWidth = 310
+            MainFrame.Size = UDim2.fromOffset(1120, 720)
+            HeaderTitle.TextSize = 16
+            HeaderSubTitle.TextSize = 10
+            Sidebar.Size = UDim2.new(0, 310, 1, -52)
+            ContentArea.Size = UDim2.new(1, -310, 1, -52)
+            ContentArea.Position = UDim2.new(0, 310, 0, 52)
+        end
+        MainFrame.Visible = true
+    end
+
+    WindowObj._ApplyPlatformMode = applyPlatformMode
+
     function WindowObj:CreateTab(tabConfig)
         tabConfig = tabConfig or {}
         local tabName = type(tabConfig) == "string" and tabConfig or (tabConfig.Name or "Tab")
@@ -1080,11 +1213,11 @@ function Library:CreateWindow(config)
         local TabObj = {}
 
         local NavBtn = Instance.new("TextButton")
-        NavBtn.Size = isMobile and UDim2.new(0, 100, 0, 32) or UDim2.new(0, 125, 0, 32)
+        NavBtn.Size = UDim2.new(0, 100, 0, 32)
         NavBtn.BackgroundColor3 = Library.Theme.BG_Surface
         NavBtn.Text = tabName
         NavBtn.Font = Enum.Font.GothamBlack
-        NavBtn.TextSize = isMobile and 10 or 12
+        NavBtn.TextSize = 11
         NavBtn.TextColor3 = Library.Theme.Text_Secondary
         NavBtn.LayoutOrder = isSettings and 9999 or 1
         NavBtn.Parent = TopNav
@@ -1313,7 +1446,7 @@ function Library:CreateWindow(config)
 
                 local Txt = Instance.new("TextLabel") Txt.Size = UDim2.new(0, 140, 0, 44) Txt.Position = UDim2.new(0, 12, 0, 0) Txt.Text = name Txt.Font = Enum.Font.GothamBold Txt.TextSize = 12 Txt.TextColor3 = Library.Theme.Text_Primary Txt.TextXAlignment = Enum.TextXAlignment.Left Txt.BackgroundTransparency = 1 Txt.Parent = Card
                 
-                local SelectedVal = Instance.new("TextLabel") SelectedVal.Size = UDim2.new(0, 140, 0, 30) SelectedVal.Position = UDim2.new(1, -152, 0, 7) SelectedVal.BackgroundColor3 = Library.Theme.BG_Container SelectedVal.Text = default SelectedVal.Font = Enum.Font.GothamBold SelectedVal.TextSize = 11 SelectedVal.TextColor3 = Library.Theme.Accent_Glow SelectedVal.Parent = Card Instance.new("UICorner", SelectedVal).CornerRadius = UDim.new(0, 6)
+                local SelectedVal = Instance.new("TextLabel") SelectedVal.Size = UDim2.new(0, 130, 0, 30) SelectedVal.Position = UDim2.new(1, -142, 0, 7) SelectedVal.BackgroundColor3 = Library.Theme.BG_Container SelectedVal.Text = default SelectedVal.Font = Enum.Font.GothamBold SelectedVal.TextSize = 11 SelectedVal.TextColor3 = Library.Theme.Accent_Glow SelectedVal.Parent = Card Instance.new("UICorner", SelectedVal).CornerRadius = UDim.new(0, 6)
                 local DropBtn = Instance.new("TextButton") DropBtn.Size = UDim2.new(1, 0, 0, 44) DropBtn.BackgroundTransparency = 1 DropBtn.Text = "" DropBtn.Parent = Card
 
                 local OptContainer = Instance.new("Frame") OptContainer.Size = UDim2.new(1, -24, 0, #options * 28) OptContainer.Position = UDim2.new(0, 12, 0, 48) OptContainer.BackgroundTransparency = 1 OptContainer.Parent = Card
@@ -1409,7 +1542,7 @@ function Library:CreateWindow(config)
                 table.insert(trackedCards, {Card = Card, Header = SecHeader, Name = name})
 
                 local Txt = Instance.new("TextLabel") Txt.Size = UDim2.new(0, 100, 1, 0) Txt.Position = UDim2.new(0, 12, 0, 0) Txt.Text = name Txt.Font = Enum.Font.GothamBold Txt.TextSize = 12 Txt.TextColor3 = Library.Theme.Text_Primary Txt.TextXAlignment = Enum.TextXAlignment.Left Txt.BackgroundTransparency = 1 Txt.Parent = Card
-                local Input = Instance.new("TextBox") Input.Size = UDim2.new(0, 160, 0, 28) Input.Position = UDim2.new(1, -172, 0.5, -14) Input.BackgroundColor3 = Library.Theme.BG_Container Input.PlaceholderText = placeholder Input.Text = "" Input.Font = Enum.Font.GothamMedium Input.TextSize = 11 Input.TextColor3 = Library.Theme.Text_Primary Input.Parent = Card Instance.new("UICorner", Input).CornerRadius = UDim.new(0, 6)
+                local Input = Instance.new("TextBox") Input.Size = UDim2.new(0, 140, 0, 28) Input.Position = UDim2.new(1, -152, 0.5, -14) Input.BackgroundColor3 = Library.Theme.BG_Container Input.PlaceholderText = placeholder Input.Text = "" Input.Font = Enum.Font.GothamMedium Input.TextSize = 11 Input.TextColor3 = Library.Theme.Text_Primary Input.Parent = Card Instance.new("UICorner", Input).CornerRadius = UDim.new(0, 6)
                 Input.FocusLost:Connect(function(enter) Library.Flags[flag] = Input.Text pcall(callback, Input.Text, enter) end)
             end
 
@@ -1626,18 +1759,14 @@ function Library:CreateWindow(config)
         end
     })
 
-    local SettingsControlSec = SettingsTab:AddSection("Interface Controls")
+    if self._SplashActive then
+        self._PendingWindow = WindowObj
+    else
+        self:ShowPlatformSelector(function(selectedPlatform)
+            applyPlatformMode(selectedPlatform)
+        end)
+    end
 
-    SettingsControlSec:AddButton({
-        Name = "Unload Framework UI",
-        Callback = function()
-            for _, conn in ipairs(Library.Connections) do if conn and conn.Connected then conn:Disconnect() end end
-            Library.Connections = {}
-            RootGui:Destroy()
-        end
-    })
-
-    MainFrame.Visible = true
     return WindowObj
 end
 
