@@ -1,6 +1,3 @@
--- [[ SENZY HUB - PRODUCTION READY UI LIBRARY ]] --
--- GitHub Raw URL Standalone Framework
-
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -22,7 +19,7 @@ local Library = {
     Connections = {},
     ConfigFolder = "SenzyHubConfigs",
     LoaderURL = "https://raw.githubusercontent.com/senzxyz2xxx/SenzyHub/refs/heads/main/Loader.lua",
-    SupportedGames = {}, -- Fallback Table
+    SupportedGames = {},
     _LoaderFetched = false,
     _CachedSupportedGames = nil,
     Theme = {
@@ -42,12 +39,8 @@ local Library = {
         Status_Yellow  = Color3.fromRGB(255, 204, 102),
         Status_Red     = Color3.fromRGB(255, 92, 108)
     },
-    Keybinds = { ToggleUI = Enum.KeyCode.LeftControl }
+    Keybinds = { ToggleUI = Enum.KeyCode.RightControl }
 }
-
--- ==========================================
--- SYSTEM INFORMATION HELPER FUNCTIONS
--- ==========================================
 
 local function detectExecutor()
     if identifyexecutor then
@@ -103,7 +96,6 @@ local function fetchLoaderLua(self)
     return self._CachedSupportedGames
 end
 
--- Asset Caching Factory
 local cachedAssets = {}
 local function createCachedImage(url, filename, parent)
     local img = Instance.new("ImageLabel")
@@ -136,7 +128,6 @@ local function createCachedImage(url, filename, parent)
     return img
 end
 
--- Vector Generators
 local function createStatusDot(color, parent)
     local Dot = Instance.new("Frame")
     Dot.Size = UDim2.fromOffset(8, 8)
@@ -165,14 +156,12 @@ local function createHamburgerIcon(parent)
     return IconFrame
 end
 
--- ScreenGui Setup
 local RootGui = Instance.new("ScreenGui")
 RootGui.Name = "SENZY_STANDALONE_UI"
 RootGui.ResetOnSpawn = false
 RootGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 RootGui.Parent = (gethui and gethui()) or CoreGui or LocalPlayer:WaitForChild("PlayerGui")
 
--- Toast Notifications
 local ToastContainer = Instance.new("Frame")
 ToastContainer.Name = "ToastContainer"
 ToastContainer.Size = UDim2.new(0, 320, 1, -40)
@@ -243,7 +232,6 @@ function Library:Notify(title, desc, duration, statusType)
     end)
 end
 
--- UI-Sized Splash Panel (อิงขนาดจาก config.Size หรือ Default 1120x720)
 function Library:PlaySplash(onComplete, windowSize)
     local splashSize = windowSize or UDim2.fromOffset(1120, 720)
 
@@ -264,7 +252,6 @@ function Library:PlaySplash(onComplete, windowSize)
     OverlayStroke.Thickness = 1.5
     OverlayStroke.Parent = Overlay
 
-    -- Banner Fit ในขอบเขต UI
     local Banner = createCachedImage(RAW_BANNER_URL, "SENZY_BANNER_CACHE.png", Overlay)
     Banner.Size = UDim2.fromScale(1, 1)
     Banner.Position = UDim2.fromScale(0, 0)
@@ -398,9 +385,6 @@ function Library:LoadConfig(filename)
     end
 end
 
--- ==========================================
--- MAIN WINDOW CREATION
--- ==========================================
 function Library:CreateWindow(config)
     config = config or {}
     local winTitle = config.Title or "SENZY HUB"
@@ -414,7 +398,8 @@ function Library:CreateWindow(config)
         IsMinimized = false,
         IsFullyClosed = false,
         SidebarCollapsed = false,
-        SidebarCards = {}
+        SidebarCards = {},
+        ThemeUpdateCallbacks = {}
     }
 
     local MainFrame = Instance.new("Frame")
@@ -433,10 +418,9 @@ function Library:CreateWindow(config)
     MainStroke.Thickness = 1.5
     MainStroke.Parent = MainFrame
 
-    -- Floating Logo (Minimized)
     local FloatingWidget = Instance.new("TextButton")
-    FloatingWidget.Size = UDim2.fromOffset(95, 95)
-    FloatingWidget.Position = UDim2.new(0, 20, 0.5, -47)
+    FloatingWidget.Size = UDim2.fromOffset(54, 54)
+    FloatingWidget.Position = UDim2.new(0, 20, 0.5, -27)
     FloatingWidget.BackgroundColor3 = self.Theme.BG_Panel
     FloatingWidget.Text = ""
     FloatingWidget.Visible = false
@@ -447,12 +431,12 @@ function Library:CreateWindow(config)
     WidgetStroke.Color = self.Theme.Accent_Main
     WidgetStroke.Thickness = 2
     WidgetStroke.Parent = FloatingWidget
+    table.insert(WindowObj.ThemeUpdateCallbacks, function(col) WidgetStroke.Color = col end)
 
     local WidgetLogo = createCachedImage(RAW_LOGO_URL, "SENZY_LOGO_CACHE.png", FloatingWidget)
-    WidgetLogo.Size = UDim2.new(0.75, 0, 0.75, 0)
-    WidgetLogo.Position = UDim2.new(0.125, 0, 0.125, 0)
+    WidgetLogo.Size = UDim2.new(0.7, 0, 0.7, 0)
+    WidgetLogo.Position = UDim2.new(0.15, 0, 0.15, 0)
 
-    -- Header
     local TopBar = Instance.new("Frame")
     TopBar.Size = UDim2.new(1, 0, 0, 52)
     TopBar.BackgroundColor3 = self.Theme.BG_Panel
@@ -497,8 +481,8 @@ function Library:CreateWindow(config)
     HeaderSubTitle.TextXAlignment = Enum.TextXAlignment.Left
     HeaderSubTitle.BackgroundTransparency = 1
     HeaderSubTitle.Parent = HeaderTitleFrame
+    table.insert(WindowObj.ThemeUpdateCallbacks, function(col) HeaderSubTitle.TextColor3 = col end)
 
-    -- Controls
     local WindowControls = Instance.new("Frame")
     WindowControls.Size = UDim2.new(0, 80, 1, 0)
     WindowControls.Position = UDim2.new(1, -85, 0, 0)
@@ -541,7 +525,6 @@ function Library:CreateWindow(config)
     CloseX2.BackgroundColor3 = self.Theme.Accent_Dark
     CloseX2.Parent = CloseBtn
 
-    -- Window Dragging
     local dragging, dragStart, startPos
     TopBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -577,7 +560,12 @@ function Library:CreateWindow(config)
         RootGui:Destroy()
     end)
 
-    -- Sidebar (Left Area)
+    table.insert(self.Connections, UserInputService.InputBegan:Connect(function(input, gpe)
+        if not gpe and input.KeyCode == Library.Keybinds.ToggleUI then
+            setMinimizeState(not WindowObj.IsMinimized)
+        end
+    end))
+
     local Sidebar = Instance.new("Frame")
     Sidebar.Name = "Sidebar"
     Sidebar.Size = UDim2.new(0, 310, 1, -52)
@@ -595,6 +583,7 @@ function Library:CreateWindow(config)
     SidebarScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     SidebarScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     SidebarScroll.Parent = Sidebar
+    table.insert(WindowObj.ThemeUpdateCallbacks, function(col) SidebarScroll.ScrollBarImageColor3 = col end)
 
     local SidebarList = Instance.new("UIListLayout")
     SidebarList.SortOrder = Enum.SortOrder.LayoutOrder
@@ -608,7 +597,6 @@ function Library:CreateWindow(config)
     SidebarPad.PaddingBottom = UDim.new(0, 12)
     SidebarPad.Parent = SidebarScroll
 
-    -- Content Area
     local ContentArea = Instance.new("Frame")
     ContentArea.Name = "ContentArea"
     ContentArea.Size = UDim2.new(1, -310, 1, -52)
@@ -616,7 +604,6 @@ function Library:CreateWindow(config)
     ContentArea.BackgroundTransparency = 1
     ContentArea.Parent = MainFrame
 
-    -- Sidebar Collapse
     HamburgerBtn.MouseButton1Click:Connect(function()
         WindowObj.SidebarCollapsed = not WindowObj.SidebarCollapsed
         local targetWidth = WindowObj.SidebarCollapsed and 0 or 310
@@ -627,9 +614,6 @@ function Library:CreateWindow(config)
         }):Play()
     end)
 
-    -- ==========================================
-    -- 0. USER PROFILE CARD (TOP OF SIDEBAR)
-    -- ==========================================
     local ProfileCard = Instance.new("Frame")
     ProfileCard.Name = "UserProfileCard"
     ProfileCard.Size = UDim2.new(1, 0, 0, 110)
@@ -660,6 +644,7 @@ function Library:CreateWindow(config)
     ProfileImgStroke.Color = self.Theme.Accent_Main
     ProfileImgStroke.Thickness = 1.5
     ProfileImgStroke.Parent = ProfileImgFrame
+    table.insert(WindowObj.ThemeUpdateCallbacks, function(col) ProfileImgStroke.Color = col end)
 
     local ProfileImg = Instance.new("ImageLabel")
     ProfileImg.Size = UDim2.fromScale(1, 1)
@@ -730,9 +715,55 @@ function Library:CreateWindow(config)
     TxtStatus.BackgroundTransparency = 1
     TxtStatus.Parent = ProfileCard
 
-    -- ==========================================
-    -- BUILT-IN SYSTEM INFORMATION PANEL WIDGETS
-    -- ==========================================
+    local DiscordCard = Instance.new("Frame")
+    DiscordCard.Name = "DiscordCommunityCard"
+    DiscordCard.Size = UDim2.new(1, 0, 0, 46)
+    DiscordCard.BackgroundColor3 = self.Theme.BG_Surface
+    DiscordCard.BorderSizePixel = 0
+    DiscordCard.Parent = SidebarScroll
+    Instance.new("UICorner", DiscordCard).CornerRadius = UDim.new(0, 8)
+
+    local DiscordCardBtn = Instance.new("TextButton")
+    DiscordCardBtn.Size = UDim2.new(1, 0, 1, 0)
+    DiscordCardBtn.BackgroundTransparency = 1
+    DiscordCardBtn.Text = ""
+    DiscordCardBtn.Parent = DiscordCard
+
+    local DiscordIconImg = Instance.new("ImageLabel")
+    DiscordIconImg.Size = UDim2.fromOffset(20, 20)
+    DiscordIconImg.Position = UDim2.new(0, 12, 0.5, -10)
+    DiscordIconImg.Image = "rbxassetid://12128796836"
+    DiscordIconImg.ImageColor3 = Color3.fromRGB(88, 101, 242)
+    DiscordIconImg.BackgroundTransparency = 1
+    DiscordIconImg.Parent = DiscordCard
+
+    local DiscordCardTxt = Instance.new("TextLabel")
+    DiscordCardTxt.Size = UDim2.new(1, -44, 1, 0)
+    DiscordCardTxt.Position = UDim2.new(0, 38, 0, 0)
+    DiscordCardTxt.Text = "DISCORD COMMUNITY"
+    DiscordCardTxt.Font = Enum.Font.GothamBlack
+    DiscordCardTxt.TextSize = 11
+    DiscordCardTxt.TextColor3 = self.Theme.Text_Primary
+    DiscordCardTxt.TextXAlignment = Enum.TextXAlignment.Left
+    DiscordCardTxt.BackgroundTransparency = 1
+    DiscordCardTxt.Parent = DiscordCard
+
+    DiscordCardBtn.MouseEnter:Connect(function()
+        TweenService:Create(DiscordCard, TweenInfo.new(0.2), {BackgroundColor3 = Library.Theme.BG_Container}):Play()
+    end)
+    DiscordCardBtn.MouseLeave:Connect(function()
+        TweenService:Create(DiscordCard, TweenInfo.new(0.2), {BackgroundColor3 = Library.Theme.BG_Surface}):Play()
+    end)
+
+    DiscordCardBtn.MouseButton1Click:Connect(function()
+        local discordLink = "https://discord.gg/rhPgnAJE4B"
+        if setclipboard then
+            setclipboard(discordLink)
+        elseif toclipboard then
+            toclipboard(discordLink)
+        end
+        Library:Notify("Discord Community", "Copied Discord Link to Clipboard!", 3.5, "Success")
+    end)
 
     local SysHeaderLabel = Instance.new("TextLabel")
     SysHeaderLabel.Size = UDim2.new(1, 0, 0, 18)
@@ -744,7 +775,6 @@ function Library:CreateWindow(config)
     SysHeaderLabel.BackgroundTransparency = 1
     SysHeaderLabel.Parent = SidebarScroll
 
-    -- 1. ENVIRONMENT
     local ExecCard = Instance.new("Frame")
     ExecCard.Size = UDim2.new(1, 0, 0, 54)
     ExecCard.BackgroundColor3 = self.Theme.BG_Surface
@@ -776,7 +806,6 @@ function Library:CreateWindow(config)
     ExecVal.BackgroundTransparency = 1
     ExecVal.Parent = ExecCard
 
-    -- 2. DEVICE TELEMETRY
     local DevCard = Instance.new("Frame")
     DevCard.Size = UDim2.new(1, 0, 0, 115)
     DevCard.BackgroundColor3 = self.Theme.BG_Surface
@@ -840,7 +869,6 @@ function Library:CreateWindow(config)
     local FPSTxt      = createTelemetryCell("FPS", "60")
     local PingTxt     = createTelemetryCell("PING", "0 ms")
 
-    -- 3. CURRENT EXPERIENCE
     local ExpCard = Instance.new("Frame")
     ExpCard.Size = UDim2.new(1, 0, 0, 72)
     ExpCard.BackgroundColor3 = self.Theme.BG_Surface
@@ -893,7 +921,6 @@ function Library:CreateWindow(config)
     ExpStatusTxt.BackgroundTransparency = 1
     ExpStatusTxt.Parent = ExpCard
 
-    -- 4. SESSION DURATION
     local SessionCard = Instance.new("Frame")
     SessionCard.Size = UDim2.new(1, 0, 0, 54)
     SessionCard.BackgroundColor3 = self.Theme.BG_Surface
@@ -922,7 +949,6 @@ function Library:CreateWindow(config)
     SessionTimeVal.BackgroundTransparency = 1
     SessionTimeVal.Parent = SessionCard
 
-    -- 5. SYSTEM STATUS
     local StatusCard = Instance.new("Frame")
     StatusCard.Size = UDim2.new(1, 0, 0, 82)
     StatusCard.BackgroundColor3 = self.Theme.BG_Surface
@@ -966,7 +992,6 @@ function Library:CreateWindow(config)
     createStatusRow(StatusCard, 42, "Environment • Active")
     createStatusRow(StatusCard, 58, "UI Framework • Loaded")
 
-    -- 1-Second Telemetry Loop
     local FrameCount = 0
     local LastCheck = tick()
     table.insert(self.Connections, RunService.RenderStepped:Connect(function()
@@ -999,10 +1024,6 @@ function Library:CreateWindow(config)
         end
     end))
 
-    -- ==========================================
-    -- TAB NAVIGATION AREA
-    -- ==========================================
-
     local TopNav = Instance.new("ScrollingFrame")
     TopNav.Size = UDim2.new(1, 0, 0, 42)
     TopNav.BackgroundColor3 = self.Theme.BG_Panel
@@ -1023,9 +1044,17 @@ function Library:CreateWindow(config)
     PageContainer.BackgroundTransparency = 1
     PageContainer.Parent = ContentArea
 
+    local function updateAccentTheme(newColor)
+        Library.Theme.Accent_Main = newColor
+        for _, cb in ipairs(WindowObj.ThemeUpdateCallbacks) do
+            pcall(cb, newColor)
+        end
+    end
+
     function WindowObj:CreateTab(tabConfig)
         tabConfig = tabConfig or {}
         local tabName = type(tabConfig) == "string" and tabConfig or (tabConfig.Name or "Tab")
+        local isSettings = tabConfig.IsSettings or false
         local TabObj = {}
 
         local NavBtn = Instance.new("TextButton")
@@ -1035,6 +1064,7 @@ function Library:CreateWindow(config)
         NavBtn.Font = Enum.Font.GothamBlack
         NavBtn.TextSize = 12
         NavBtn.TextColor3 = Library.Theme.Text_Secondary
+        NavBtn.LayoutOrder = isSettings and 9999 or 1
         NavBtn.Parent = TopNav
         Instance.new("UICorner", NavBtn).CornerRadius = UDim.new(0, 6)
 
@@ -1047,6 +1077,7 @@ function Library:CreateWindow(config)
         PageScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
         PageScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
         PageScroll.Parent = PageContainer
+        table.insert(WindowObj.ThemeUpdateCallbacks, function(col) PageScroll.ScrollBarImageColor3 = col end)
 
         local PageList = Instance.new("UIListLayout")
         PageList.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1060,6 +1091,50 @@ function Library:CreateWindow(config)
         PagePad.PaddingBottom = UDim.new(0, 16)
         PagePad.Parent = PageScroll
 
+        local SearchFrame = Instance.new("Frame")
+        SearchFrame.Size = UDim2.new(1, 0, 0, 36)
+        SearchFrame.BackgroundColor3 = Library.Theme.BG_Surface
+        SearchFrame.Parent = PageScroll
+        Instance.new("UICorner", SearchFrame).CornerRadius = UDim.new(0, 8)
+
+        local SearchIcon = Instance.new("TextLabel")
+        SearchIcon.Size = UDim2.new(0, 65, 1, 0)
+        SearchIcon.Text = "[SEARCH]"
+        SearchIcon.Font = Enum.Font.GothamBold
+        SearchIcon.TextSize = 9
+        SearchIcon.TextColor3 = Library.Theme.Text_Dark
+        SearchIcon.BackgroundTransparency = 1
+        SearchIcon.Parent = SearchFrame
+
+        local SearchBox = Instance.new("TextBox")
+        SearchBox.Size = UDim2.new(1, -75, 1, 0)
+        SearchBox.Position = UDim2.new(0, 68, 0, 0)
+        SearchBox.PlaceholderText = "Search features or components..."
+        SearchBox.Text = ""
+        SearchBox.Font = Enum.Font.GothamMedium
+        SearchBox.TextSize = 11
+        SearchBox.TextColor3 = Library.Theme.Text_Primary
+        SearchBox.PlaceholderColor3 = Library.Theme.Text_Dark
+        SearchBox.TextXAlignment = Enum.TextXAlignment.Left
+        SearchBox.BackgroundTransparency = 1
+        SearchBox.Parent = SearchFrame
+
+        local trackedCards = {}
+
+        SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+            local query = SearchBox.Text:lower()
+            for _, item in ipairs(trackedCards) do
+                if query == "" then
+                    item.Card.Visible = true
+                    if item.Header then item.Header.Visible = true end
+                else
+                    local match = string.find(item.Name:lower(), query, 1, true) ~= nil
+                    item.Card.Visible = match
+                    if item.Header then item.Header.Visible = match end
+                end
+            end
+        end)
+
         if WindowObj.CurrentTab == nil then
             WindowObj.CurrentTab = PageScroll
             PageScroll.Visible = true
@@ -1067,9 +1142,16 @@ function Library:CreateWindow(config)
             NavBtn.TextColor3 = Library.Theme.Text_Primary
         end
 
+        table.insert(WindowObj.ThemeUpdateCallbacks, function(col)
+            if WindowObj.CurrentTab == PageScroll then
+                NavBtn.BackgroundColor3 = col
+            end
+        end)
+
         NavBtn.MouseButton1Click:Connect(function()
             for _, p in pairs(PageContainer:GetChildren()) do if p:IsA("ScrollingFrame") then p.Visible = false end end
             for _, b in pairs(TopNav:GetChildren()) do if b:IsA("TextButton") then b.BackgroundColor3 = Library.Theme.BG_Surface b.TextColor3 = Library.Theme.Text_Secondary end end
+            WindowObj.CurrentTab = PageScroll
             PageScroll.Visible = true
             NavBtn.BackgroundColor3 = Library.Theme.Accent_Main
             NavBtn.TextColor3 = Library.Theme.Text_Primary
@@ -1113,6 +1195,8 @@ function Library:CreateWindow(config)
                 Btn.Text = name Btn.Font = Enum.Font.GothamBlack Btn.TextSize = 12 Btn.TextColor3 = Library.Theme.Text_Primary
                 Btn.Parent = Container Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 8)
 
+                table.insert(trackedCards, {Card = Btn, Header = SecHeader, Name = name})
+
                 Btn.MouseButton1Click:Connect(function()
                     TweenService:Create(Btn, TweenInfo.new(0.1), {BackgroundColor3 = Library.Theme.Accent_Main}):Play()
                     task.delay(0.1, function() TweenService:Create(Btn, TweenInfo.new(0.2), {BackgroundColor3 = Library.Theme.BG_Surface}):Play() end)
@@ -1129,6 +1213,8 @@ function Library:CreateWindow(config)
                 Card.Size = UDim2.new(1, 0, 0, 58) Card.BackgroundColor3 = Library.Theme.BG_Surface Card.Parent = Container
                 Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 8)
 
+                table.insert(trackedCards, {Card = Card, Header = SecHeader, Name = name .. " " .. desc})
+
                 local TxtTitle = Instance.new("TextLabel")
                 TxtTitle.Size = UDim2.new(1, -70, 0, 22) TxtTitle.Position = UDim2.new(0, 12, 0, 8) TxtTitle.Text = name
                 TxtTitle.Font = Enum.Font.GothamBlack TxtTitle.TextSize = 12 TxtTitle.TextColor3 = Library.Theme.Text_Primary
@@ -1138,6 +1224,10 @@ function Library:CreateWindow(config)
                 Switch.Size = UDim2.new(0, 44, 0, 22) Switch.Position = UDim2.new(1, -54, 0.5, -11)
                 Switch.BackgroundColor3 = default and Library.Theme.Accent_Main or Library.Theme.BG_Container Switch.Parent = Card
                 Instance.new("UICorner", Switch).CornerRadius = UDim.new(1, 0)
+
+                table.insert(WindowObj.ThemeUpdateCallbacks, function(col)
+                    if Library.Flags[flag] then Switch.BackgroundColor3 = col end
+                end)
 
                 local Knob = Instance.new("Frame")
                 Knob.Size = UDim2.new(0, 18, 0, 18) Knob.Position = default and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9)
@@ -1162,6 +1252,8 @@ function Library:CreateWindow(config)
                 local Card = Instance.new("Frame") Card.Size = UDim2.new(1, 0, 0, 54) Card.BackgroundColor3 = Library.Theme.BG_Surface Card.Parent = Container
                 Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 8)
 
+                table.insert(trackedCards, {Card = Card, Header = SecHeader, Name = name})
+
                 local Txt = Instance.new("TextLabel") Txt.Size = UDim2.new(1, -80, 0, 20) Txt.Position = UDim2.new(0, 12, 0, 6) Txt.Text = name
                 Txt.Font = Enum.Font.GothamBold Txt.TextSize = 12 Txt.TextColor3 = Library.Theme.Text_Primary Txt.TextXAlignment = Enum.TextXAlignment.Left Txt.BackgroundTransparency = 1 Txt.Parent = Card
 
@@ -1170,6 +1262,8 @@ function Library:CreateWindow(config)
 
                 local BarBG = Instance.new("Frame") BarBG.Size = UDim2.new(1, -24, 0, 8) BarBG.Position = UDim2.new(0, 12, 0, 34) BarBG.BackgroundColor3 = Library.Theme.BG_Container BarBG.Parent = Card Instance.new("UICorner", BarBG).CornerRadius = UDim.new(1, 0)
                 local BarFill = Instance.new("Frame") BarFill.Size = UDim2.new((default - min)/(max - min), 0, 1, 0) BarFill.BackgroundColor3 = Library.Theme.Accent_Main BarFill.Parent = BarBG Instance.new("UICorner", BarFill).CornerRadius = UDim.new(1, 0)
+                table.insert(WindowObj.ThemeUpdateCallbacks, function(col) BarFill.BackgroundColor3 = col end)
+
                 local SldBtn = Instance.new("TextButton") SldBtn.Size = UDim2.new(1, 0, 1, 0) SldBtn.BackgroundTransparency = 1 SldBtn.Text = "" SldBtn.Parent = BarBG
 
                 local sliding = false
@@ -1187,6 +1281,8 @@ function Library:CreateWindow(config)
                 Library.Flags[flag] = default local isExpanded = false
 
                 local Card = Instance.new("Frame") Card.Size = UDim2.new(1, 0, 0, 44) Card.BackgroundColor3 = Library.Theme.BG_Surface Card.ClipsDescendants = true Card.Parent = Container Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 8)
+                table.insert(trackedCards, {Card = Card, Header = SecHeader, Name = name})
+
                 local Txt = Instance.new("TextLabel") Txt.Size = UDim2.new(0, 140, 0, 44) Txt.Position = UDim2.new(0, 12, 0, 0) Txt.Text = name Txt.Font = Enum.Font.GothamBold Txt.TextSize = 12 Txt.TextColor3 = Library.Theme.Text_Primary Txt.TextXAlignment = Enum.TextXAlignment.Left Txt.BackgroundTransparency = 1 Txt.Parent = Card
                 
                 local SelectedVal = Instance.new("TextLabel") SelectedVal.Size = UDim2.new(0, 180, 0, 30) SelectedVal.Position = UDim2.new(1, -212, 0, 7) SelectedVal.BackgroundColor3 = Library.Theme.BG_Container SelectedVal.Text = default SelectedVal.Font = Enum.Font.GothamBold SelectedVal.TextSize = 11 SelectedVal.TextColor3 = Library.Theme.Accent_Glow SelectedVal.Parent = Card Instance.new("UICorner", SelectedVal).CornerRadius = UDim.new(0, 6)
@@ -1215,6 +1311,8 @@ function Library:CreateWindow(config)
                 Library.Flags[flag] = default local selectedMap = {} for _, v in ipairs(default) do selectedMap[v] = true end local isExpanded = false
 
                 local Card = Instance.new("Frame") Card.Size = UDim2.new(1, 0, 0, 58) Card.BackgroundColor3 = Library.Theme.BG_Surface Card.ClipsDescendants = true Card.Parent = Container Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 8)
+                table.insert(trackedCards, {Card = Card, Header = SecHeader, Name = name})
+
                 local HeaderTxt = Instance.new("TextLabel") HeaderTxt.Size = UDim2.new(0, 180, 0, 22) HeaderTxt.Position = UDim2.new(0, 12, 0, 8) HeaderTxt.Text = name:upper() HeaderTxt.Font = Enum.Font.GothamBlack HeaderTxt.TextSize = 11 HeaderTxt.TextColor3 = Library.Theme.Text_Primary HeaderTxt.TextXAlignment = Enum.TextXAlignment.Left HeaderTxt.BackgroundTransparency = 1 HeaderTxt.Parent = Card
 
                 local ChipScroll = Instance.new("ScrollingFrame") ChipScroll.Size = UDim2.new(1, -40, 0, 24) ChipScroll.Position = UDim2.new(0, 12, 0, 28) ChipScroll.BackgroundTransparency = 1 ChipScroll.ScrollBarThickness = 0 ChipScroll.CanvasSize = UDim2.new(0, 0, 0, 0) ChipScroll.Parent = Card
@@ -1280,6 +1378,8 @@ function Library:CreateWindow(config)
             function SecObj:AddTextbox(cfg)
                 cfg = cfg or {} local name = cfg.Name or "Textbox" local placeholder = cfg.Placeholder or "Enter text..." local flag = cfg.Flag or name local callback = cfg.Callback or function() end
                 local Card = Instance.new("Frame") Card.Size = UDim2.new(1, 0, 0, 44) Card.BackgroundColor3 = Library.Theme.BG_Surface Card.Parent = Container Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 8)
+                table.insert(trackedCards, {Card = Card, Header = SecHeader, Name = name})
+
                 local Txt = Instance.new("TextLabel") Txt.Size = UDim2.new(0, 140, 1, 0) Txt.Position = UDim2.new(0, 12, 0, 0) Txt.Text = name Txt.Font = Enum.Font.GothamBold Txt.TextSize = 12 Txt.TextColor3 = Library.Theme.Text_Primary Txt.TextXAlignment = Enum.TextXAlignment.Left Txt.BackgroundTransparency = 1 Txt.Parent = Card
                 local Input = Instance.new("TextBox") Input.Size = UDim2.new(0, 220, 0, 28) Input.Position = UDim2.new(1, -232, 0.5, -14) Input.BackgroundColor3 = Library.Theme.BG_Container Input.PlaceholderText = placeholder Input.Text = "" Input.Font = Enum.Font.GothamMedium Input.TextSize = 11 Input.TextColor3 = Library.Theme.Text_Primary Input.Parent = Card Instance.new("UICorner", Input).CornerRadius = UDim.new(0, 6)
                 Input.FocusLost:Connect(function(enter) Library.Flags[flag] = Input.Text pcall(callback, Input.Text, enter) end)
@@ -1287,10 +1387,13 @@ function Library:CreateWindow(config)
 
             function SecObj:AddLabel(text)
                 local Lbl = Instance.new("TextLabel") Lbl.Size = UDim2.new(1, 0, 0, 20) Lbl.Text = text or "Label" Lbl.Font = Enum.Font.GothamMedium Lbl.TextSize = 11 Lbl.TextColor3 = Library.Theme.Text_Secondary Lbl.TextXAlignment = Enum.TextXAlignment.Left Lbl.BackgroundTransparency = 1 Lbl.Parent = Container
+                table.insert(trackedCards, {Card = Lbl, Header = SecHeader, Name = text or "Label"})
             end
 
             function SecObj:AddParagraph(title, desc)
                 local Card = Instance.new("Frame") Card.Size = UDim2.new(1, 0, 0, 60) Card.BackgroundColor3 = Library.Theme.BG_Surface Card.Parent = Container Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 8)
+                table.insert(trackedCards, {Card = Card, Header = SecHeader, Name = (title or "") .. " " .. (desc or "")})
+
                 local TxtTitle = Instance.new("TextLabel") TxtTitle.Size = UDim2.new(1, -24, 0, 22) TxtTitle.Position = UDim2.new(0, 12, 0, 8) TxtTitle.Text = title or "Title" TxtTitle.Font = Enum.Font.GothamBlack TxtTitle.TextSize = 12 TxtTitle.TextColor3 = Library.Theme.Text_Primary TxtTitle.TextXAlignment = Enum.TextXAlignment.Left TxtTitle.BackgroundTransparency = 1 TxtTitle.Parent = Card
                 local TxtDesc = Instance.new("TextLabel") TxtDesc.Size = UDim2.new(1, -24, 0, 24) TxtDesc.Position = UDim2.new(0, 12, 0, 28) TxtDesc.Text = desc or "Description" TxtDesc.Font = Enum.Font.GothamMedium TxtDesc.TextSize = 10 TxtDesc.TextColor3 = Library.Theme.Text_Dark TxtDesc.TextXAlignment = Enum.TextXAlignment.Left TxtDesc.TextWrapped = true TxtDesc.BackgroundTransparency = 1 TxtDesc.Parent = Card
             end
@@ -1298,6 +1401,8 @@ function Library:CreateWindow(config)
             function SecObj:AddKeybind(cfg)
                 cfg = cfg or {} local name = cfg.Name or "Keybind" local defaultKey = cfg.Default or Enum.KeyCode.LeftControl local callback = cfg.Callback or function() end
                 local Card = Instance.new("Frame") Card.Size = UDim2.new(1, 0, 0, 44) Card.BackgroundColor3 = Library.Theme.BG_Surface Card.Parent = Container Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 8)
+                table.insert(trackedCards, {Card = Card, Header = SecHeader, Name = name})
+
                 local Txt = Instance.new("TextLabel") Txt.Size = UDim2.new(0, 140, 1, 0) Txt.Position = UDim2.new(0, 12, 0, 0) Txt.Text = name Txt.Font = Enum.Font.GothamBold Txt.TextSize = 12 Txt.TextColor3 = Library.Theme.Text_Primary Txt.TextXAlignment = Enum.TextXAlignment.Left Txt.BackgroundTransparency = 1 Txt.Parent = Card
                 local KeyBtn = Instance.new("TextButton") KeyBtn.Size = UDim2.new(0, 120, 0, 28) KeyBtn.Position = UDim2.new(1, -132, 0.5, -14) KeyBtn.BackgroundColor3 = Library.Theme.BG_Container KeyBtn.Text = defaultKey.Name KeyBtn.Font = Enum.Font.GothamBold KeyBtn.TextSize = 11 KeyBtn.TextColor3 = Library.Theme.Accent_Glow KeyBtn.Parent = Card Instance.new("UICorner", KeyBtn).CornerRadius = UDim.new(0, 6)
                 KeyBtn.MouseButton1Click:Connect(function()
@@ -1308,10 +1413,217 @@ function Library:CreateWindow(config)
                 end)
             end
 
+            function SecObj:AddColorPicker(cfg)
+                cfg = cfg or {}
+                local name = cfg.Name or "Color Picker"
+                local defaultColor = cfg.Default or Library.Theme.Accent_Main
+                local flag = cfg.Flag or name
+                local callback = cfg.Callback or function() end
+
+                Library.Flags[flag] = defaultColor
+                local isExpanded = false
+                local currColor = defaultColor
+                local h, s, v = currColor:ToHSV()
+
+                local Card = Instance.new("Frame")
+                Card.Size = UDim2.new(1, 0, 0, 44)
+                Card.BackgroundColor3 = Library.Theme.BG_Surface
+                Card.ClipsDescendants = true
+                Card.Parent = Container
+                Instance.new("UICorner", Card).CornerRadius = UDim.new(0, 8)
+                table.insert(trackedCards, {Card = Card, Header = SecHeader, Name = name})
+
+                local Txt = Instance.new("TextLabel")
+                Txt.Size = UDim2.new(0, 180, 0, 44)
+                Txt.Position = UDim2.new(0, 12, 0, 0)
+                Txt.Text = name
+                Txt.Font = Enum.Font.GothamBold
+                Txt.TextSize = 12
+                Txt.TextColor3 = Library.Theme.Text_Primary
+                Txt.TextXAlignment = Enum.TextXAlignment.Left
+                Txt.BackgroundTransparency = 1
+                Txt.Parent = Card
+
+                local PreviewTile = Instance.new("Frame")
+                PreviewTile.Size = UDim2.new(0, 44, 0, 24)
+                PreviewTile.Position = UDim2.new(1, -56, 0, 10)
+                PreviewTile.BackgroundColor3 = currColor
+                PreviewTile.Parent = Card
+                Instance.new("UICorner", PreviewTile).CornerRadius = UDim.new(0, 6)
+
+                local ToggleBtn = Instance.new("TextButton")
+                ToggleBtn.Size = UDim2.new(1, 0, 0, 44)
+                ToggleBtn.BackgroundTransparency = 1
+                ToggleBtn.Text = ""
+                ToggleBtn.Parent = Card
+
+                local PickerPanel = Instance.new("Frame")
+                PickerPanel.Size = UDim2.new(1, -24, 0, 90)
+                PickerPanel.Position = UDim2.new(0, 12, 0, 48)
+                PickerPanel.BackgroundTransparency = 1
+                PickerPanel.Parent = Card
+
+                local HueBar = Instance.new("Frame")
+                HueBar.Size = UDim2.new(1, 0, 0, 16)
+                HueBar.Position = UDim2.new(0, 0, 0, 10)
+                HueBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                HueBar.Parent = PickerPanel
+                Instance.new("UICorner", HueBar).CornerRadius = UDim.new(0, 4)
+
+                local HueGrad = Instance.new("UIGradient")
+                HueGrad.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+                    ColorSequenceKeypoint.new(0.167, Color3.fromRGB(255, 255, 0)),
+                    ColorSequenceKeypoint.new(0.333, Color3.fromRGB(0, 255, 0)),
+                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+                    ColorSequenceKeypoint.new(0.667, Color3.fromRGB(0, 0, 255)),
+                    ColorSequenceKeypoint.new(0.833, Color3.fromRGB(255, 0, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+                })
+                HueGrad.Parent = HueBar
+
+                local HueKnob = Instance.new("Frame")
+                HueKnob.Size = UDim2.new(0, 10, 1, 4)
+                HueKnob.Position = UDim2.new(h, -5, 0, -2)
+                HueKnob.BackgroundColor3 = Library.Theme.Text_Primary
+                HueKnob.Parent = HueBar
+                Instance.new("UICorner", HueKnob).CornerRadius = UDim.new(0, 2)
+
+                local HueBtn = Instance.new("TextButton")
+                HueBtn.Size = UDim2.new(1, 0, 1, 0)
+                HueBtn.BackgroundTransparency = 1
+                HueBtn.Text = ""
+                HueBtn.Parent = HueBar
+
+                local ValBar = Instance.new("Frame")
+                ValBar.Size = UDim2.new(1, 0, 0, 16)
+                ValBar.Position = UDim2.new(0, 0, 0, 45)
+                ValBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                ValBar.Parent = PickerPanel
+                Instance.new("UICorner", ValBar).CornerRadius = UDim.new(0, 4)
+
+                local ValGrad = Instance.new("UIGradient")
+                ValGrad.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 0)),
+                    ColorSequenceKeypoint.new(1, Color3.fromHSV(h, s, 1))
+                })
+                ValGrad.Parent = ValBar
+
+                local ValKnob = Instance.new("Frame")
+                ValKnob.Size = UDim2.new(0, 10, 1, 4)
+                ValKnob.Position = UDim2.new(v, -5, 0, -2)
+                ValKnob.BackgroundColor3 = Library.Theme.Text_Primary
+                ValKnob.Parent = ValBar
+                Instance.new("UICorner", ValKnob).CornerRadius = UDim.new(0, 2)
+
+                local ValBtn = Instance.new("TextButton")
+                ValBtn.Size = UDim2.new(1, 0, 1, 0)
+                ValBtn.BackgroundTransparency = 1
+                ValBtn.Text = ""
+                ValBtn.Parent = ValBar
+
+                local function updateColor()
+                    currColor = Color3.fromHSV(h, s, v)
+                    PreviewTile.BackgroundColor3 = currColor
+                    ValGrad.Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 0)),
+                        ColorSequenceKeypoint.new(1, Color3.fromHSV(h, s, 1))
+                    })
+                    Library.Flags[flag] = currColor
+                    pcall(callback, currColor)
+                end
+
+                local slidingHue = false
+                HueBtn.InputBegan:Connect(function(inp)
+                    if inp.UserInputType == Enum.UserInputType.MouseButton1 then slidingHue = true end
+                end)
+
+                local slidingVal = false
+                ValBtn.InputBegan:Connect(function(inp)
+                    if inp.UserInputType == Enum.UserInputType.MouseButton1 then slidingVal = true end
+                end)
+
+                UserInputService.InputEnded:Connect(function(inp)
+                    if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+                        slidingHue = false slidingVal = false
+                    end
+                end)
+
+                UserInputService.InputChanged:Connect(function(inp)
+                    if inp.UserInputType == Enum.UserInputType.MouseMovement then
+                        if slidingHue then
+                            h = math.clamp((inp.Position.X - HueBar.AbsolutePosition.X) / HueBar.AbsoluteSize.X, 0, 1)
+                            HueKnob.Position = UDim2.new(h, -5, 0, -2)
+                            updateColor()
+                        elseif slidingVal then
+                            v = math.clamp((inp.Position.X - ValBar.AbsolutePosition.X) / ValBar.AbsoluteSize.X, 0, 1)
+                            ValKnob.Position = UDim2.new(v, -5, 0, -2)
+                            updateColor()
+                        end
+                    end
+                end)
+
+                ToggleBtn.MouseButton1Click:Connect(function()
+                    isExpanded = not isExpanded
+                    local targetHeight = isExpanded and 145 or 44
+                    TweenService:Create(Card, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, targetHeight)}):Play()
+                end)
+            end
+
             return SecObj
         end
         return TabObj
     end
+
+    local SettingsTab = WindowObj:CreateTab({ Name = "Settings", IsSettings = true })
+    local SettingsKeybindSec = SettingsTab:AddSection("Keybind Settings")
+
+    SettingsKeybindSec:AddKeybind({
+        Name = "Toggle UI Keybind",
+        Default = Enum.KeyCode.RightControl,
+        Callback = function(key)
+            Library.Keybinds.ToggleUI = key
+            Library:Notify("Keybind Updated", "Toggle UI key set to: " .. key.Name, 3, "Success")
+        end
+    })
+
+    local SettingsThemeSec = SettingsTab:AddSection("Theme & Customization")
+
+    SettingsThemeSec:AddColorPicker({
+        Name = "Primary Accent Color",
+        Default = Library.Theme.Accent_Main,
+        Flag = "AccentColorPicker",
+        Callback = function(newCol)
+            updateAccentTheme(newCol)
+        end
+    })
+
+    local SettingsConfigSec = SettingsTab:AddSection("Config Management")
+
+    SettingsConfigSec:AddButton({
+        Name = "Save Current Config",
+        Callback = function()
+            Library:SaveConfig("default_config.json")
+            Library:Notify("Config Engine", "Saved settings to default_config.json", 3, "Success")
+        end
+    })
+
+    SettingsConfigSec:AddButton({
+        Name = "Load Saved Config",
+        Callback = function()
+            Library:LoadConfig("default_config.json")
+            Library:Notify("Config Engine", "Loaded configuration successfully!", 3, "Success")
+        end
+    })
+
+    SettingsConfigSec:AddButton({
+        Name = "Unload Framework UI",
+        Callback = function()
+            for _, conn in ipairs(Library.Connections) do if conn and conn.Connected then conn:Disconnect() end end
+            Library.Connections = {}
+            RootGui:Destroy()
+        end
+    })
 
     MainFrame.Visible = true
     return WindowObj
