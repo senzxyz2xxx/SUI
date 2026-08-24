@@ -9,8 +9,8 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local StatsService = game:GetService("Stats")
 local Workspace = game:GetService("Workspace")
 
-local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera or Workspace:WaitForChild("Camera")
+local LocalPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
+local Camera = Workspace.CurrentCamera or Workspace:WaitForChild("Camera", 5)
 local StartTime = tick()
 
 local RAW_LOGO_URL   = "https://raw.githubusercontent.com/senzxyz2xxx/SenzyHub/refs/heads/main/senz2.png"
@@ -23,6 +23,7 @@ local Library = {
     ColorSaveFile = "SenzyHubConfigs/accent_color.json",
     LoaderURL = "https://raw.githubusercontent.com/senzxyz2xxx/SenzyHub/refs/heads/main/Loader.lua",
     SupportedGames = {},
+    LoaderStatus = "NotStarted", -- "NotStarted" | "Loading" | "Ready" | "Failed"
     _LoaderFetched = false,
     _CachedSupportedGames = nil,
     _SplashActive = false,
@@ -47,10 +48,18 @@ local Library = {
     Keybinds = { ToggleUI = Enum.KeyCode.RightControl }
 }
 
+-- Prevent duplicate instances & cleanup previous connections
+for _, conn in ipairs(Library.Connections) do
+    if conn and typeof(conn) == "RBXScriptConnection" and conn.Connected then
+        pcall(function() conn:Disconnect() end)
+    end
+end
+Library.Connections = {}
+
 function Library:AutoSaveColor(color)
     if writefile and isfolder and makefolder then
-        if not isfolder(self.ConfigFolder) then makefolder(self.ConfigFolder) end
         pcall(function()
+            if not isfolder(self.ConfigFolder) then makefolder(self.ConfigFolder) end
             local data = { R = color.R, G = color.G, B = color.B }
             writefile(self.ColorSaveFile, HttpService:JSONEncode(data))
         end)
@@ -59,26 +68,22 @@ end
 
 function Library:AutoLoadColor()
     if readfile and isfile then
-        if isfile(self.ColorSaveFile) then
-            local success, result = pcall(function()
+        pcall(function()
+            if isfile(self.ColorSaveFile) then
                 local decoded = HttpService:JSONDecode(readfile(self.ColorSaveFile))
                 if type(decoded) == "table" and decoded.R and decoded.G and decoded.B then
-                    return Color3.new(decoded.R, decoded.G, decoded.B)
+                    self.Theme.Accent_Main = Color3.new(decoded.R, decoded.G, decoded.B)
                 end
-            end)
-            if success and result then
-                self.Theme.Accent_Main = result
-                return result
             end
-        end
+        end)
     end
     return self.Theme.Accent_Main
 end
 
 local function detectExecutor()
     if identifyexecutor then
-        local exec = identifyexecutor()
-        if exec and exec ~= "" then return exec end
+        local success, exec = pcall(identifyexecutor)
+        if success and exec and exec ~= "" then return exec end
     end
     if KRNL_LOADED then return "Krnl" end
     if WRD_LOADED then return "WeAreDevs" end
@@ -94,35 +99,42 @@ local function detectExecutor()
 end
 
 local function detectPlatform()
-    if UserInputService.TouchEnabled and not UserInputService.MouseEnabled then
-        if GuiService:IsTenFootInterface() then return "Console" end
-        local osName = UserInputService:GetPlatform()
-        if osName == Enum.Platform.IOS then return "IOS" end
-        return "Android"
-    elseif UserInputService.MouseEnabled then
-        local osName = UserInputService:GetPlatform()
-        if osName == Enum.Platform.OSX then return "MacOS" end
+    local success, res = pcall(function()
+        if UserInputService.TouchEnabled and not UserInputService.MouseEnabled then
+            if GuiService:IsTenFootInterface() then return "Console" end
+            local osName = UserInputService:GetPlatform()
+            if osName == Enum.Platform.IOS then return "IOS" end
+            return "Android"
+        elseif UserInputService.MouseEnabled then
+            local osName = UserInputService:GetPlatform()
+            if osName == Enum.Platform.OSX then return "MacOS" end
+            return "Windows"
+        end
         return "Windows"
-    end
-    return "Windows"
+    end)
+    return success and res or "Windows"
 end
 
 local function fetchLoaderLua(self)
-    if self._LoaderFetched then return self._CachedSupportedGames end
-    self._LoaderFetched = true
-    self._CachedSupportedGames = {}
+    if self.LoaderStatus == "Ready" or self.LoaderStatus == "Loading" then
+        return self._CachedSupportedGames or self.SupportedGames or {}
+    end
+    
+    self.LoaderStatus = "Loading"
+    self._CachedSupportedGames = self.SupportedGames or {}
 
     task.spawn(function()
         local success, response = pcall(function()
             return game:HttpGet(self.LoaderURL)
         end)
 
-        if success and response then
+        if success and response and type(response) == "string" then
             for placeId, gameName in string.gmatch(response, "%[%s*(%d+)%s*%]%s*=%s*[\"']([^\"']+)[\"']") do
                 self._CachedSupportedGames[tonumber(placeId)] = gameName
             end
+            self.LoaderStatus = "Ready"
         else
-            self._CachedSupportedGames = self.SupportedGames or {}
+            self.LoaderStatus = "Failed"
         end
     end)
 
@@ -141,22 +153,26 @@ local function createCachedImage(url, filename, parent)
         return img
     end
 
+    img.Image = url -- Fallback image URL
+
     task.spawn(function()
-        if getcustomasset and writefile and isfile then
-            if not isfile(filename) then
-                local success, data = pcall(function() return game:HttpGet(url) end)
-                if success and data then pcall(function() writefile(filename, data) end) end
-            end
-            if isfile(filename) then
-                local success, asset = pcall(function() return getcustomasset(filename) end)
-                if success and asset then
-                    cachedAssets[filename] = asset
-                    img.Image = asset
-                    return
+        pcall(function()
+            if getcustomasset and writefile and isfile then
+                if not isfile(filename) then
+                    local success, data = pcall(function() return game:HttpGet(url) end)
+                    if success and data and #data > 0 then 
+                        pcall(function() writefile(filename, data) end) 
+                    end
+                end
+                if isfile(filename) then
+                    local success, asset = pcall(function() return getcustomasset(filename) end)
+                    if success and asset then
+                        cachedAssets[filename] = asset
+                        img.Image = asset
+                    end
                 end
             end
-        end
-        img.Image = url
+        end)
     end)
     return img
 end
@@ -189,11 +205,44 @@ local function createHamburgerIcon(parent)
     return IconFrame
 end
 
+-- Safe RootGui Resolution
+local function getSafeGuiParent()
+    if gethui then
+        local success, hui = pcall(gethui)
+        if success and hui then return hui end
+    end
+    
+    local successCore, coreGui = pcall(function() return CoreGui end)
+    if successCore and coreGui then
+        local canParent = pcall(function()
+            local test = Instance.new("Frame")
+            test.Parent = coreGui
+            test:Destroy()
+        end)
+        if canParent then return coreGui end
+    end
+
+    if LocalPlayer then
+        local pGui = LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 5)
+        if pGui then return pGui end
+    end
+
+    return CoreGui
+end
+
+local GuiParent = getSafeGuiParent()
+
+-- Cleanup old RootGui if present
+local oldGui = GuiParent:FindFirstChild("SENZY_STANDALONE_UI")
+if oldGui then
+    pcall(function() oldGui:Destroy() end)
+end
+
 local RootGui = Instance.new("ScreenGui")
 RootGui.Name = "SENZY_STANDALONE_UI"
 RootGui.ResetOnSpawn = false
 RootGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-RootGui.Parent = (gethui and gethui()) or CoreGui or LocalPlayer:WaitForChild("PlayerGui")
+RootGui.Parent = GuiParent
 
 local ToastContainer = Instance.new("Frame")
 ToastContainer.Name = "ToastContainer"
@@ -390,15 +439,22 @@ function Library:PlaySplash(onComplete, windowSize)
         TweenService:Create(ProgressFill, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
         TweenService:Create(StatusTxt, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
         task.wait(0.35)
-        Overlay:Destroy()
+        
+        if Overlay and Overlay.Parent then
+            Overlay:Destroy()
+        end
 
         self._SplashActive = false
 
-        if onComplete then onComplete() end
+        if onComplete then pcall(onComplete) end
 
         if self._PendingWindow then
+            local win = self._PendingWindow
+            self._PendingWindow = nil
             self:ShowPlatformSelector(function(selectedPlatform)
-                self._PendingWindow._ApplyPlatformMode(selectedPlatform)
+                if win and win._ApplyPlatformMode then
+                    win._ApplyPlatformMode(selectedPlatform)
+                end
             end)
         end
     end)
@@ -406,6 +462,7 @@ end
 
 function Library:ShowPlatformSelector(onSelect)
     local savedColor = self:AutoLoadColor()
+    local handled = false
 
     local SelectorFrame = Instance.new("Frame")
     SelectorFrame.Name = "PlatformSelectorPopup"
@@ -488,13 +545,17 @@ function Library:ShowPlatformSelector(onSelect)
     MobileStroke.Parent = MobileBtn
 
     local function handleSelection(mode)
+        if handled then return end
+        handled = true
         TweenService:Create(SelectorFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
             Size = UDim2.fromOffset(0, 0),
             BackgroundTransparency = 1
         }):Play()
         task.wait(0.25)
-        SelectorFrame:Destroy()
-        if onSelect then onSelect(mode) end
+        if SelectorFrame and SelectorFrame.Parent then
+            SelectorFrame:Destroy()
+        end
+        if onSelect then pcall(onSelect, mode) end
     end
 
     PCBtn.MouseEnter:Connect(function()
@@ -687,9 +748,11 @@ function Library:CreateWindow(config)
 
     CloseBtn.MouseButton1Click:Connect(function()
         WindowObj.IsFullyClosed = true
-        for _, conn in ipairs(self.Connections) do if conn and conn.Connected then conn:Disconnect() end end
+        for _, conn in ipairs(self.Connections) do if conn and typeof(conn) == "RBXScriptConnection" and conn.Connected then conn:Disconnect() end end
         self.Connections = {}
-        RootGui:Destroy()
+        if RootGui and RootGui.Parent then
+            RootGui:Destroy()
+        end
     end)
 
     table.insert(self.Connections, UserInputService.InputBegan:Connect(function(input, gpe)
@@ -776,21 +839,22 @@ function Library:CreateWindow(config)
     Instance.new("UICorner", ProfileImg).CornerRadius = UDim.new(1, 0)
 
     task.spawn(function()
-        local thumbUrl = ""
         pcall(function()
-            thumbUrl = Players:GetUserThumbnailAsync(
-                LocalPlayer.UserId,
-                Enum.ThumbnailType.HeadShot,
-                Enum.ThumbnailSize.Size150x150
-            )
+            if LocalPlayer and LocalPlayer.UserId then
+                local thumbUrl = Players:GetUserThumbnailAsync(
+                    LocalPlayer.UserId,
+                    Enum.ThumbnailType.HeadShot,
+                    Enum.ThumbnailSize.Size150x150
+                )
+                if thumbUrl and thumbUrl ~= "" then ProfileImg.Image = thumbUrl end
+            end
         end)
-        if thumbUrl ~= "" then ProfileImg.Image = thumbUrl end
     end)
 
     local TxtDisplayName = Instance.new("TextLabel")
     TxtDisplayName.Size = UDim2.new(1, -82, 0, 18)
     TxtDisplayName.Position = UDim2.new(0, 76, 0, 26)
-    TxtDisplayName.Text = LocalPlayer.DisplayName
+    TxtDisplayName.Text = LocalPlayer and LocalPlayer.DisplayName or "User"
     TxtDisplayName.Font = Enum.Font.GothamBlack
     TxtDisplayName.TextSize = 12
     TxtDisplayName.TextColor3 = self.Theme.Text_Primary
@@ -802,7 +866,7 @@ function Library:CreateWindow(config)
     local TxtUsername = Instance.new("TextLabel")
     TxtUsername.Size = UDim2.new(1, -82, 0, 14)
     TxtUsername.Position = UDim2.new(0, 76, 0, 44)
-    TxtUsername.Text = "@" .. LocalPlayer.Name
+    TxtUsername.Text = "@" .. (LocalPlayer and LocalPlayer.Name or "Player")
     TxtUsername.Font = Enum.Font.GothamMedium
     TxtUsername.TextSize = 10
     TxtUsername.TextColor3 = self.Theme.Text_Secondary
@@ -814,7 +878,7 @@ function Library:CreateWindow(config)
     local TxtUserId = Instance.new("TextLabel")
     TxtUserId.Size = UDim2.new(1, -82, 0, 14)
     TxtUserId.Position = UDim2.new(0, 76, 0, 58)
-    TxtUserId.Text = "User ID: " .. tostring(LocalPlayer.UserId)
+    TxtUserId.Text = "User ID: " .. tostring(LocalPlayer and LocalPlayer.UserId or 0)
     TxtUserId.Font = Enum.Font.GothamBold
     TxtUserId.TextSize = 9
     TxtUserId.TextColor3 = self.Theme.Text_Dark
@@ -876,9 +940,9 @@ function Library:CreateWindow(config)
     DiscordCardBtn.MouseButton1Click:Connect(function()
         local discordLink = "https://discord.gg/rhPgnAJE4B"
         if setclipboard then
-            setclipboard(discordLink)
+            pcall(setclipboard, discordLink)
         elseif toclipboard then
-            toclipboard(discordLink)
+            pcall(toclipboard, discordLink)
         end
         Library:Notify("Discord Community", "Copied Discord Link to Clipboard!", 3.5, "Success")
     end)
@@ -1007,7 +1071,8 @@ function Library:CreateWindow(config)
     local currentPlaceId = game.PlaceId
     local gameNameFound = "Unknown Experience"
     pcall(function()
-        gameNameFound = MarketplaceService:GetProductInfo(currentPlaceId).Name
+        local info = MarketplaceService:GetProductInfo(currentPlaceId)
+        if info and info.Name then gameNameFound = info.Name end
     end)
 
     local ExpTitleTxt = Instance.new("TextLabel")
@@ -1136,7 +1201,6 @@ function Library:CreateWindow(config)
     TabContainerList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         TabContainer.Size = UDim2.new(1, 0, 0, TabContainerList.AbsoluteContentSize.Y)
     end)
-    -- ----------------------------
 
     -- --- HAMBURGER MENU COLLAPSE LOGIC ---
     HamburgerBtn.MouseButton1Click:Connect(function()
@@ -1144,7 +1208,6 @@ function Library:CreateWindow(config)
         local isCollapsed = WindowObj.SidebarCollapsed
         local targetWidth = isCollapsed and 60 or (WindowObj.SidebarWidth or 310)
         
-        -- Toggle Visibility for Cards in Sidebar (Only Avatar remains in collapsed mode)
         ProfileHeader.Visible = not isCollapsed
         TxtDisplayName.Visible = not isCollapsed
         TxtUsername.Visible = not isCollapsed
@@ -1176,11 +1239,11 @@ function Library:CreateWindow(config)
             Position = UDim2.new(0, targetWidth, 0, 52)
         }):Play()
     end)
-    -- -------------------------------------
 
     local FrameCount = 0
     local LastCheck = tick()
     table.insert(self.Connections, RunService.RenderStepped:Connect(function()
+        if WindowObj.IsFullyClosed then return end
         FrameCount = FrameCount + 1
         if tick() - LastCheck >= 1 then
             local fps = FrameCount
@@ -1189,7 +1252,8 @@ function Library:CreateWindow(config)
 
             local ping = 0
             pcall(function()
-                ping = math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue())
+                local item = StatsService.Network.ServerStatsItem:FindFirstChild("Data Ping")
+                if item then ping = math.floor(item:GetValue()) end
             end)
 
             FPSTxt.Text = tostring(fps)
@@ -1517,12 +1581,12 @@ function Library:CreateWindow(config)
                 SldBtn.InputBegan:Connect(function(inp)
                     if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then sliding = true update(inp) end
                 end)
-                UserInputService.InputEnded:Connect(function(inp)
+                table.insert(Library.Connections, UserInputService.InputEnded:Connect(function(inp)
                     if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then sliding = false end
-                end)
-                UserInputService.InputChanged:Connect(function(inp)
+                end))
+                table.insert(Library.Connections, UserInputService.InputChanged:Connect(function(inp)
                     if sliding and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then update(inp) end
-                end)
+                end))
             end
 
             function SecObj:AddDropdown(cfg)
@@ -1792,13 +1856,13 @@ function Library:CreateWindow(config)
                     if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then slidingVal = true end
                 end)
 
-                UserInputService.InputEnded:Connect(function(inp)
+                table.insert(Library.Connections, UserInputService.InputEnded:Connect(function(inp)
                     if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
                         slidingHue = false slidingVal = false
                     end
-                end)
+                end))
 
-                UserInputService.InputChanged:Connect(function(inp)
+                table.insert(Library.Connections, UserInputService.InputChanged:Connect(function(inp)
                     if inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch then
                         if slidingHue then
                             h = math.clamp((inp.Position.X - HueBar.AbsolutePosition.X) / HueBar.AbsoluteSize.X, 0, 1)
@@ -1810,7 +1874,7 @@ function Library:CreateWindow(config)
                             updateColor()
                         end
                     end
-                end)
+                end))
 
                 ToggleBtn.MouseButton1Click:Connect(function()
                     isExpanded = not isExpanded
