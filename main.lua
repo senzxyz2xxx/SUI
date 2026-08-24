@@ -527,8 +527,8 @@ function Library:CreateWindow(config)
         IsMinimized = false,
         IsFullyClosed = false,
         SidebarCollapsed = false,
-        SidebarCards = {},
         ThemeUpdateCallbacks = {},
+        TabButtons = {},
         SidebarWidth = 310,
         IsMobileMode = false
     }
@@ -735,17 +735,6 @@ function Library:CreateWindow(config)
     ContentArea.Position = UDim2.new(0, 310, 0, 52)
     ContentArea.BackgroundTransparency = 1
     ContentArea.Parent = MainFrame
-
-    HamburgerBtn.MouseButton1Click:Connect(function()
-        WindowObj.SidebarCollapsed = not WindowObj.SidebarCollapsed
-        local curWidth = WindowObj.SidebarWidth or 310
-        local targetWidth = WindowObj.SidebarCollapsed and 0 or curWidth
-        TweenService:Create(Sidebar, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, targetWidth, 1, -52)}):Play()
-        TweenService:Create(ContentArea, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Size = WindowObj.SidebarCollapsed and UDim2.new(1, 0, 1, -52) or UDim2.new(1, -curWidth, 1, -52),
-            Position = WindowObj.SidebarCollapsed and UDim2.new(0, 0, 0, 52) or UDim2.new(0, curWidth, 0, 52)
-        }):Play()
-    end)
 
     local ProfileCard = Instance.new("Frame")
     ProfileCard.Name = "UserProfileCard"
@@ -1121,6 +1110,74 @@ function Library:CreateWindow(config)
     createStatusRow(StatusCard, 42, "Environment • Active")
     createStatusRow(StatusCard, 58, "UI Framework • Loaded")
 
+    -- --- SIDEBAR TABS SECTION ---
+    local TabHeaderLabel = Instance.new("TextLabel")
+    TabHeaderLabel.Name = "TabHeaderLabel"
+    TabHeaderLabel.Size = UDim2.new(1, 0, 0, 18)
+    TabHeaderLabel.Text = "NAVIGATION TABS"
+    TabHeaderLabel.Font = Enum.Font.GothamBlack
+    TabHeaderLabel.TextSize = 11
+    TabHeaderLabel.TextColor3 = self.Theme.Accent_Glow
+    TabHeaderLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TabHeaderLabel.BackgroundTransparency = 1
+    TabHeaderLabel.Parent = SidebarScroll
+
+    local TabContainer = Instance.new("Frame")
+    TabContainer.Name = "TabContainer"
+    TabContainer.Size = UDim2.new(1, 0, 0, 0)
+    TabContainer.BackgroundTransparency = 1
+    TabContainer.Parent = SidebarScroll
+
+    local TabContainerList = Instance.new("UIListLayout")
+    TabContainerList.SortOrder = Enum.SortOrder.LayoutOrder
+    TabContainerList.Padding = UDim.new(0, 6)
+    TabContainerList.Parent = TabContainer
+
+    TabContainerList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        TabContainer.Size = UDim2.new(1, 0, 0, TabContainerList.AbsoluteContentSize.Y)
+    end)
+    -- ----------------------------
+
+    -- --- HAMBURGER MENU COLLAPSE LOGIC ---
+    HamburgerBtn.MouseButton1Click:Connect(function()
+        WindowObj.SidebarCollapsed = not WindowObj.SidebarCollapsed
+        local isCollapsed = WindowObj.SidebarCollapsed
+        local targetWidth = isCollapsed and 60 or (WindowObj.SidebarWidth or 310)
+        
+        -- Toggle Visibility for Cards in Sidebar (Only Avatar remains in collapsed mode)
+        ProfileHeader.Visible = not isCollapsed
+        TxtDisplayName.Visible = not isCollapsed
+        TxtUsername.Visible = not isCollapsed
+        TxtUserId.Visible = not isCollapsed
+        StatusDot.Visible = not isCollapsed
+        TxtStatus.Visible = not isCollapsed
+        ProfileCard.Size = isCollapsed and UDim2.new(1, 0, 0, 60) or UDim2.new(1, 0, 0, 110)
+        ProfileImgFrame.Position = isCollapsed and UDim2.new(0.5, -24, 0.5, -24) or UDim2.new(0, 12, 0, 28)
+        ProfileImgFrame.Size = isCollapsed and UDim2.fromOffset(48, 48) or UDim2.fromOffset(56, 56)
+
+        DiscordCard.Visible = not isCollapsed
+        SysHeaderLabel.Visible = not isCollapsed
+        ExecCard.Visible = not isCollapsed
+        DevCard.Visible = not isCollapsed
+        ExpCard.Visible = not isCollapsed
+        SessionCard.Visible = not isCollapsed
+        StatusCard.Visible = not isCollapsed
+        TabHeaderLabel.Visible = not isCollapsed
+
+        for _, tData in ipairs(WindowObj.TabButtons) do
+            tData.Label.Visible = not isCollapsed
+            tData.Icon.Visible = isCollapsed
+            tData.Button.Size = isCollapsed and UDim2.new(1, 0, 0, 36) or UDim2.new(1, 0, 0, 36)
+        end
+
+        TweenService:Create(Sidebar, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, targetWidth, 1, -52)}):Play()
+        TweenService:Create(ContentArea, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Size = UDim2.new(1, -targetWidth, 1, -52),
+            Position = UDim2.new(0, targetWidth, 0, 52)
+        }):Play()
+    end)
+    -- -------------------------------------
+
     local FrameCount = 0
     local LastCheck = tick()
     table.insert(self.Connections, RunService.RenderStepped:Connect(function()
@@ -1153,23 +1210,9 @@ function Library:CreateWindow(config)
         end
     end))
 
-    local TopNav = Instance.new("ScrollingFrame")
-    TopNav.Size = UDim2.new(1, 0, 0, 42)
-    TopNav.BackgroundColor3 = self.Theme.BG_Panel
-    TopNav.BorderSizePixel = 0
-    TopNav.ScrollBarThickness = 0
-    TopNav.CanvasSize = UDim2.new(0, 0, 0, 0)
-    TopNav.Parent = ContentArea
-
-    local TopNavList = Instance.new("UIListLayout")
-    TopNavList.FillDirection = Enum.FillDirection.Horizontal
-    TopNavList.SortOrder = Enum.SortOrder.LayoutOrder
-    TopNavList.Padding = UDim.new(0, 8)
-    TopNavList.Parent = TopNav
-
     local PageContainer = Instance.new("Frame")
-    PageContainer.Size = UDim2.new(1, 0, 1, -42)
-    PageContainer.Position = UDim2.new(0, 0, 0, 42)
+    PageContainer.Size = UDim2.new(1, 0, 1, 0)
+    PageContainer.Position = UDim2.new(0, 0, 0, 0)
     PageContainer.BackgroundTransparency = 1
     PageContainer.Parent = ContentArea
 
@@ -1213,15 +1256,41 @@ function Library:CreateWindow(config)
         local TabObj = {}
 
         local NavBtn = Instance.new("TextButton")
-        NavBtn.Size = UDim2.new(0, 100, 0, 32)
+        NavBtn.Size = UDim2.new(1, 0, 0, 36)
         NavBtn.BackgroundColor3 = Library.Theme.BG_Surface
-        NavBtn.Text = tabName
-        NavBtn.Font = Enum.Font.GothamBlack
-        NavBtn.TextSize = 11
-        NavBtn.TextColor3 = Library.Theme.Text_Secondary
+        NavBtn.Text = ""
         NavBtn.LayoutOrder = isSettings and 9999 or 1
-        NavBtn.Parent = TopNav
+        NavBtn.Parent = TabContainer
         Instance.new("UICorner", NavBtn).CornerRadius = UDim.new(0, 6)
+
+        local NavLabel = Instance.new("TextLabel")
+        NavLabel.Size = UDim2.new(1, -24, 1, 0)
+        NavLabel.Position = UDim2.new(0, 12, 0, 0)
+        NavLabel.Text = tabName
+        NavLabel.Font = Enum.Font.GothamBlack
+        NavLabel.TextSize = 11
+        NavLabel.TextColor3 = Library.Theme.Text_Secondary
+        NavLabel.TextXAlignment = Enum.TextXAlignment.Left
+        NavLabel.BackgroundTransparency = 1
+        NavLabel.Parent = NavBtn
+
+        local NavIcon = Instance.new("TextLabel")
+        NavIcon.Size = UDim2.new(1, 0, 1, 0)
+        NavIcon.Position = UDim2.new(0, 0, 0, 0)
+        NavIcon.Text = string.sub(tabName, 1, 1):upper()
+        NavIcon.Font = Enum.Font.GothamBlack
+        NavIcon.TextSize = 14
+        NavIcon.TextColor3 = Library.Theme.Text_Secondary
+        NavIcon.BackgroundTransparency = 1
+        NavIcon.Visible = false
+        NavIcon.Parent = NavBtn
+
+        table.insert(WindowObj.TabButtons, {
+            Button = NavBtn,
+            Label = NavLabel,
+            Icon = NavIcon,
+            Page = nil
+        })
 
         local PageScroll = Instance.new("ScrollingFrame")
         PageScroll.Size = UDim2.new(1, 0, 1, 0)
@@ -1233,6 +1302,8 @@ function Library:CreateWindow(config)
         PageScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
         PageScroll.Parent = PageContainer
         table.insert(WindowObj.ThemeUpdateCallbacks, function(col) PageScroll.ScrollBarImageColor3 = col end)
+
+        WindowObj.TabButtons[#WindowObj.TabButtons].Page = PageScroll
 
         local PageList = Instance.new("UIListLayout")
         PageList.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1294,7 +1365,8 @@ function Library:CreateWindow(config)
             WindowObj.CurrentTab = PageScroll
             PageScroll.Visible = true
             NavBtn.BackgroundColor3 = Library.Theme.Accent_Main
-            NavBtn.TextColor3 = Library.Theme.Text_Primary
+            NavLabel.TextColor3 = Library.Theme.Text_Primary
+            NavIcon.TextColor3 = Library.Theme.Text_Primary
         end
 
         table.insert(WindowObj.ThemeUpdateCallbacks, function(col)
@@ -1303,13 +1375,29 @@ function Library:CreateWindow(config)
             end
         end)
 
+        NavBtn.MouseEnter:Connect(function()
+            if WindowObj.CurrentTab ~= PageScroll then
+                TweenService:Create(NavBtn, TweenInfo.new(0.2), {BackgroundColor3 = Library.Theme.BG_Container}):Play()
+            end
+        end)
+        NavBtn.MouseLeave:Connect(function()
+            if WindowObj.CurrentTab ~= PageScroll then
+                TweenService:Create(NavBtn, TweenInfo.new(0.2), {BackgroundColor3 = Library.Theme.BG_Surface}):Play()
+            end
+        end)
+
         NavBtn.MouseButton1Click:Connect(function()
             for _, p in pairs(PageContainer:GetChildren()) do if p:IsA("ScrollingFrame") then p.Visible = false end end
-            for _, b in pairs(TopNav:GetChildren()) do if b:IsA("TextButton") then b.BackgroundColor3 = Library.Theme.BG_Surface b.TextColor3 = Library.Theme.Text_Secondary end end
+            for _, tData in pairs(WindowObj.TabButtons) do 
+                tData.Button.BackgroundColor3 = Library.Theme.BG_Surface 
+                tData.Label.TextColor3 = Library.Theme.Text_Secondary 
+                tData.Icon.TextColor3 = Library.Theme.Text_Secondary
+            end
             WindowObj.CurrentTab = PageScroll
             PageScroll.Visible = true
             NavBtn.BackgroundColor3 = Library.Theme.Accent_Main
-            NavBtn.TextColor3 = Library.Theme.Text_Primary
+            NavLabel.TextColor3 = Library.Theme.Text_Primary
+            NavIcon.TextColor3 = Library.Theme.Text_Primary
         end)
 
         function TabObj:AddSection(secTitle)
