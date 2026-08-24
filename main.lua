@@ -23,7 +23,7 @@ local Library = {
     ColorSaveFile = "SenzyHubConfigs/accent_color.json",
     LoaderURL = "https://raw.githubusercontent.com/senzxyz2xxx/SenzyHub/refs/heads/main/Loader.lua",
     SupportedGames = {},
-    LoaderStatus = "NotStarted", -- "NotStarted" | "Loading" | "Ready" | "Failed"
+    LoaderStatus = "NotStarted",
     _LoaderFetched = false,
     _CachedSupportedGames = nil,
     _SplashActive = false,
@@ -48,7 +48,6 @@ local Library = {
     Keybinds = { ToggleUI = Enum.KeyCode.RightControl }
 }
 
--- Prevent duplicate instances & cleanup previous connections
 for _, conn in ipairs(Library.Connections) do
     if conn and typeof(conn) == "RBXScriptConnection" and conn.Connected then
         pcall(function() conn:Disconnect() end)
@@ -153,7 +152,7 @@ local function createCachedImage(url, filename, parent)
         return img
     end
 
-    img.Image = url -- Fallback image URL
+    img.Image = url
 
     task.spawn(function()
         pcall(function()
@@ -205,7 +204,6 @@ local function createHamburgerIcon(parent)
     return IconFrame
 end
 
--- Safe RootGui Resolution
 local function getSafeGuiParent()
     if gethui then
         local success, hui = pcall(gethui)
@@ -232,7 +230,6 @@ end
 
 local GuiParent = getSafeGuiParent()
 
--- Cleanup old RootGui if present
 local oldGui = GuiParent:FindFirstChild("SENZY_STANDALONE_UI")
 if oldGui then
     pcall(function() oldGui:Destroy() end)
@@ -590,7 +587,8 @@ function Library:CreateWindow(config)
         SidebarCollapsed = false,
         ThemeUpdateCallbacks = {},
         TabButtons = {},
-        SidebarWidth = 310,
+        LeftPanelWidth = 200,
+        RightPanelWidth = 280,
         IsMobileMode = false
     }
 
@@ -761,50 +759,101 @@ function Library:CreateWindow(config)
         end
     end))
 
-    local Sidebar = Instance.new("Frame")
-    Sidebar.Name = "Sidebar"
-    Sidebar.Size = UDim2.new(0, 310, 1, -52)
-    Sidebar.Position = UDim2.new(0, 0, 0, 52)
-    Sidebar.BackgroundColor3 = self.Theme.BG_Panel
-    Sidebar.BorderSizePixel = 0
-    Sidebar.ClipsDescendants = true
-    Sidebar.Parent = MainFrame
+    -- === 3-PANEL LAYOUT ARCHITECTURE ===
+    
+    -- 1. LEFT NAVIGATION PANEL
+    local LeftNavigationPanel = Instance.new("Frame")
+    LeftNavigationPanel.Name = "LeftNavigationPanel"
+    LeftNavigationPanel.Size = UDim2.new(0, 200, 1, -52)
+    LeftNavigationPanel.Position = UDim2.new(0, 0, 0, 52)
+    LeftNavigationPanel.BackgroundColor3 = self.Theme.BG_Panel
+    LeftNavigationPanel.BorderSizePixel = 0
+    LeftNavigationPanel.ClipsDescendants = true
+    LeftNavigationPanel.Parent = MainFrame
 
-    local SidebarScroll = Instance.new("ScrollingFrame")
-    SidebarScroll.Size = UDim2.new(1, 0, 1, 0)
-    SidebarScroll.BackgroundTransparency = 1
-    SidebarScroll.ScrollBarThickness = 3
-    SidebarScroll.ScrollBarImageColor3 = savedColor
-    SidebarScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    SidebarScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-    SidebarScroll.Parent = Sidebar
-    table.insert(WindowObj.ThemeUpdateCallbacks, function(col) SidebarScroll.ScrollBarImageColor3 = col end)
+    local NavScroll = Instance.new("ScrollingFrame")
+    NavScroll.Name = "NavigationTabs"
+    NavScroll.Size = UDim2.new(1, 0, 1, 0)
+    NavScroll.BackgroundTransparency = 1
+    NavScroll.ScrollBarThickness = 3
+    NavScroll.ScrollBarImageColor3 = savedColor
+    NavScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    NavScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    NavScroll.Parent = LeftNavigationPanel
+    table.insert(WindowObj.ThemeUpdateCallbacks, function(col) NavScroll.ScrollBarImageColor3 = col end)
 
-    local SidebarList = Instance.new("UIListLayout")
-    SidebarList.SortOrder = Enum.SortOrder.LayoutOrder
-    SidebarList.Padding = UDim.new(0, 10)
-    SidebarList.Parent = SidebarScroll
+    local NavList = Instance.new("UIListLayout")
+    NavList.SortOrder = Enum.SortOrder.LayoutOrder
+    NavList.Padding = UDim.new(0, 6)
+    NavList.Parent = NavScroll
 
-    local SidebarPad = Instance.new("UIPadding")
-    SidebarPad.PaddingTop = UDim.new(0, 12)
-    SidebarPad.PaddingLeft = UDim.new(0, 12)
-    SidebarPad.PaddingRight = UDim.new(0, 12)
-    SidebarPad.PaddingBottom = UDim.new(0, 12)
-    SidebarPad.Parent = SidebarScroll
+    local NavPad = Instance.new("UIPadding")
+    NavPad.PaddingTop = UDim.new(0, 12)
+    NavPad.PaddingLeft = UDim.new(0, 12)
+    NavPad.PaddingRight = UDim.new(0, 12)
+    NavPad.PaddingBottom = UDim.new(0, 12)
+    NavPad.Parent = NavScroll
 
-    local ContentArea = Instance.new("Frame")
-    ContentArea.Name = "ContentArea"
-    ContentArea.Size = UDim2.new(1, -310, 1, -52)
-    ContentArea.Position = UDim2.new(0, 310, 0, 52)
-    ContentArea.BackgroundTransparency = 1
-    ContentArea.Parent = MainFrame
+    local TabHeaderLabel = Instance.new("TextLabel")
+    TabHeaderLabel.Name = "TabHeaderLabel"
+    TabHeaderLabel.Size = UDim2.new(1, 0, 0, 18)
+    TabHeaderLabel.Text = "NAVIGATION TABS"
+    TabHeaderLabel.Font = Enum.Font.GothamBlack
+    TabHeaderLabel.TextSize = 11
+    TabHeaderLabel.TextColor3 = self.Theme.Accent_Glow
+    TabHeaderLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TabHeaderLabel.BackgroundTransparency = 1
+    TabHeaderLabel.LayoutOrder = 0
+    TabHeaderLabel.Parent = NavScroll
 
+    -- 2. RIGHT PROFILE / SYSTEM INFORMATION PANEL
+    local RightProfilePanel = Instance.new("Frame")
+    RightProfilePanel.Name = "RightProfilePanel"
+    RightProfilePanel.Size = UDim2.new(0, 280, 1, -52)
+    RightProfilePanel.Position = UDim2.new(1, -280, 0, 52)
+    RightProfilePanel.BackgroundColor3 = self.Theme.BG_Panel
+    RightProfilePanel.BorderSizePixel = 0
+    RightProfilePanel.ClipsDescendants = true
+    RightProfilePanel.Parent = MainFrame
+
+    local RightScroll = Instance.new("ScrollingFrame")
+    RightScroll.Size = UDim2.new(1, 0, 1, 0)
+    RightScroll.BackgroundTransparency = 1
+    RightScroll.ScrollBarThickness = 3
+    RightScroll.ScrollBarImageColor3 = savedColor
+    RightScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    RightScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    RightScroll.Parent = RightProfilePanel
+    table.insert(WindowObj.ThemeUpdateCallbacks, function(col) RightScroll.ScrollBarImageColor3 = col end)
+
+    local RightList = Instance.new("UIListLayout")
+    RightList.SortOrder = Enum.SortOrder.LayoutOrder
+    RightList.Padding = UDim.new(0, 10)
+    RightList.Parent = RightScroll
+
+    local RightPad = Instance.new("UIPadding")
+    RightPad.PaddingTop = UDim.new(0, 12)
+    RightPad.PaddingLeft = UDim.new(0, 12)
+    RightPad.PaddingRight = UDim.new(0, 12)
+    RightPad.PaddingBottom = UDim.new(0, 12)
+    RightPad.Parent = RightScroll
+
+    -- 3. MAIN CONTENT PANEL (CENTER)
+    local MainContentPanel = Instance.new("Frame")
+    MainContentPanel.Name = "MainContentPanel"
+    MainContentPanel.Size = UDim2.new(1, -480, 1, -52)
+    MainContentPanel.Position = UDim2.new(0, 200, 0, 52)
+    MainContentPanel.BackgroundTransparency = 1
+    MainContentPanel.ClipsDescendants = true
+    MainContentPanel.Parent = MainFrame
+
+    -- === POPULATE RIGHT PROFILE PANEL ===
     local ProfileCard = Instance.new("Frame")
     ProfileCard.Name = "UserProfileCard"
     ProfileCard.Size = UDim2.new(1, 0, 0, 110)
     ProfileCard.BackgroundColor3 = self.Theme.BG_Surface
     ProfileCard.BorderSizePixel = 0
-    ProfileCard.Parent = SidebarScroll
+    ProfileCard.Parent = RightScroll
     Instance.new("UICorner", ProfileCard).CornerRadius = UDim.new(0, 8)
 
     local ProfileHeader = Instance.new("TextLabel")
@@ -906,7 +955,7 @@ function Library:CreateWindow(config)
     DiscordCard.Size = UDim2.new(1, 0, 0, 46)
     DiscordCard.BackgroundColor3 = self.Theme.BG_Surface
     DiscordCard.BorderSizePixel = 0
-    DiscordCard.Parent = SidebarScroll
+    DiscordCard.Parent = RightScroll
     Instance.new("UICorner", DiscordCard).CornerRadius = UDim.new(0, 8)
 
     local DiscordCardBtn = Instance.new("TextButton")
@@ -955,12 +1004,12 @@ function Library:CreateWindow(config)
     SysHeaderLabel.TextColor3 = self.Theme.Accent_Glow
     SysHeaderLabel.TextXAlignment = Enum.TextXAlignment.Left
     SysHeaderLabel.BackgroundTransparency = 1
-    SysHeaderLabel.Parent = SidebarScroll
+    SysHeaderLabel.Parent = RightScroll
 
     local ExecCard = Instance.new("Frame")
     ExecCard.Size = UDim2.new(1, 0, 0, 54)
     ExecCard.BackgroundColor3 = self.Theme.BG_Surface
-    ExecCard.Parent = SidebarScroll
+    ExecCard.Parent = RightScroll
     Instance.new("UICorner", ExecCard).CornerRadius = UDim.new(0, 8)
 
     local ExecLabel = Instance.new("TextLabel")
@@ -991,7 +1040,7 @@ function Library:CreateWindow(config)
     local DevCard = Instance.new("Frame")
     DevCard.Size = UDim2.new(1, 0, 0, 115)
     DevCard.BackgroundColor3 = self.Theme.BG_Surface
-    DevCard.Parent = SidebarScroll
+    DevCard.Parent = RightScroll
     Instance.new("UICorner", DevCard).CornerRadius = UDim.new(0, 8)
 
     local DevHeader = Instance.new("TextLabel")
@@ -1054,7 +1103,7 @@ function Library:CreateWindow(config)
     local ExpCard = Instance.new("Frame")
     ExpCard.Size = UDim2.new(1, 0, 0, 72)
     ExpCard.BackgroundColor3 = self.Theme.BG_Surface
-    ExpCard.Parent = SidebarScroll
+    ExpCard.Parent = RightScroll
     Instance.new("UICorner", ExpCard).CornerRadius = UDim.new(0, 8)
 
     local ExpHeader = Instance.new("TextLabel")
@@ -1107,7 +1156,7 @@ function Library:CreateWindow(config)
     local SessionCard = Instance.new("Frame")
     SessionCard.Size = UDim2.new(1, 0, 0, 54)
     SessionCard.BackgroundColor3 = self.Theme.BG_Surface
-    SessionCard.Parent = SidebarScroll
+    SessionCard.Parent = RightScroll
     Instance.new("UICorner", SessionCard).CornerRadius = UDim.new(0, 8)
 
     local SessionHeader = Instance.new("TextLabel")
@@ -1135,7 +1184,7 @@ function Library:CreateWindow(config)
     local StatusCard = Instance.new("Frame")
     StatusCard.Size = UDim2.new(1, 0, 0, 82)
     StatusCard.BackgroundColor3 = self.Theme.BG_Surface
-    StatusCard.Parent = SidebarScroll
+    StatusCard.Parent = RightScroll
     Instance.new("UICorner", StatusCard).CornerRadius = UDim.new(0, 8)
 
     local StatusHeader = Instance.new("TextLabel")
@@ -1175,68 +1224,32 @@ function Library:CreateWindow(config)
     createStatusRow(StatusCard, 42, "Environment • Active")
     createStatusRow(StatusCard, 58, "UI Framework • Loaded")
 
-    -- --- SIDEBAR TABS SECTION ---
-    local TabHeaderLabel = Instance.new("TextLabel")
-    TabHeaderLabel.Name = "TabHeaderLabel"
-    TabHeaderLabel.Size = UDim2.new(1, 0, 0, 18)
-    TabHeaderLabel.Text = "NAVIGATION TABS"
-    TabHeaderLabel.Font = Enum.Font.GothamBlack
-    TabHeaderLabel.TextSize = 11
-    TabHeaderLabel.TextColor3 = self.Theme.Accent_Glow
-    TabHeaderLabel.TextXAlignment = Enum.TextXAlignment.Left
-    TabHeaderLabel.BackgroundTransparency = 1
-    TabHeaderLabel.Parent = SidebarScroll
-
-    local TabContainer = Instance.new("Frame")
-    TabContainer.Name = "TabContainer"
-    TabContainer.Size = UDim2.new(1, 0, 0, 0)
-    TabContainer.BackgroundTransparency = 1
-    TabContainer.Parent = SidebarScroll
-
-    local TabContainerList = Instance.new("UIListLayout")
-    TabContainerList.SortOrder = Enum.SortOrder.LayoutOrder
-    TabContainerList.Padding = UDim.new(0, 6)
-    TabContainerList.Parent = TabContainer
-
-    TabContainerList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        TabContainer.Size = UDim2.new(1, 0, 0, TabContainerList.AbsoluteContentSize.Y)
-    end)
-
     -- --- HAMBURGER MENU COLLAPSE LOGIC ---
     HamburgerBtn.MouseButton1Click:Connect(function()
         WindowObj.SidebarCollapsed = not WindowObj.SidebarCollapsed
         local isCollapsed = WindowObj.SidebarCollapsed
-        local targetWidth = isCollapsed and 60 or (WindowObj.SidebarWidth or 310)
+        local targetLeftWidth = isCollapsed and 60 or (WindowObj.LeftPanelWidth or 200)
+        local targetRightWidth = isCollapsed and 0 or (WindowObj.RightPanelWidth or 280)
         
-        ProfileHeader.Visible = not isCollapsed
-        TxtDisplayName.Visible = not isCollapsed
-        TxtUsername.Visible = not isCollapsed
-        TxtUserId.Visible = not isCollapsed
-        StatusDot.Visible = not isCollapsed
-        TxtStatus.Visible = not isCollapsed
-        ProfileCard.Size = isCollapsed and UDim2.new(1, 0, 0, 60) or UDim2.new(1, 0, 0, 110)
-        ProfileImgFrame.Position = isCollapsed and UDim2.new(0.5, -24, 0.5, -24) or UDim2.new(0, 12, 0, 28)
-        ProfileImgFrame.Size = isCollapsed and UDim2.fromOffset(48, 48) or UDim2.fromOffset(56, 56)
-
-        DiscordCard.Visible = not isCollapsed
-        SysHeaderLabel.Visible = not isCollapsed
-        ExecCard.Visible = not isCollapsed
-        DevCard.Visible = not isCollapsed
-        ExpCard.Visible = not isCollapsed
-        SessionCard.Visible = not isCollapsed
-        StatusCard.Visible = not isCollapsed
         TabHeaderLabel.Visible = not isCollapsed
 
         for _, tData in ipairs(WindowObj.TabButtons) do
             tData.Label.Visible = not isCollapsed
             tData.Icon.Visible = isCollapsed
-            tData.Button.Size = isCollapsed and UDim2.new(1, 0, 0, 36) or UDim2.new(1, 0, 0, 36)
         end
 
-        TweenService:Create(Sidebar, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, targetWidth, 1, -52)}):Play()
-        TweenService:Create(ContentArea, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Size = UDim2.new(1, -targetWidth, 1, -52),
-            Position = UDim2.new(0, targetWidth, 0, 52)
+        TweenService:Create(LeftNavigationPanel, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, targetLeftWidth, 1, -52)
+        }):Play()
+
+        TweenService:Create(RightProfilePanel, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, targetRightWidth, 1, -52),
+            Position = UDim2.new(1, -targetRightWidth, 0, 52)
+        }):Play()
+
+        TweenService:Create(MainContentPanel, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Position = UDim2.new(0, targetLeftWidth, 0, 52),
+            Size = UDim2.new(1, -(targetLeftWidth + targetRightWidth), 1, -52)
         }):Play()
     end)
 
@@ -1275,10 +1288,11 @@ function Library:CreateWindow(config)
     end))
 
     local PageContainer = Instance.new("Frame")
+    PageContainer.Name = "PageContainer"
     PageContainer.Size = UDim2.new(1, 0, 1, 0)
     PageContainer.Position = UDim2.new(0, 0, 0, 0)
     PageContainer.BackgroundTransparency = 1
-    PageContainer.Parent = ContentArea
+    PageContainer.Parent = MainContentPanel
 
     local function updateAccentTheme(newColor)
         Library.Theme.Accent_Main = newColor
@@ -1291,22 +1305,28 @@ function Library:CreateWindow(config)
     local function applyPlatformMode(mode)
         if mode == "MOBILE" then
             WindowObj.IsMobileMode = true
-            WindowObj.SidebarWidth = 200
-            MainFrame.Size = UDim2.fromOffset(560, 360)
+            WindowObj.LeftPanelWidth = 140
+            WindowObj.RightPanelWidth = 180
+            MainFrame.Size = UDim2.fromOffset(680, 380)
             HeaderTitle.TextSize = 13
             HeaderSubTitle.TextSize = 9
-            Sidebar.Size = UDim2.new(0, 200, 1, -52)
-            ContentArea.Size = UDim2.new(1, -200, 1, -52)
-            ContentArea.Position = UDim2.new(0, 200, 0, 52)
+            LeftNavigationPanel.Size = UDim2.new(0, 140, 1, -52)
+            RightProfilePanel.Size = UDim2.new(0, 180, 1, -52)
+            RightProfilePanel.Position = UDim2.new(1, -180, 0, 52)
+            MainContentPanel.Size = UDim2.new(1, -320, 1, -52)
+            MainContentPanel.Position = UDim2.new(0, 140, 0, 52)
         else
             WindowObj.IsMobileMode = false
-            WindowObj.SidebarWidth = 310
+            WindowObj.LeftPanelWidth = 200
+            WindowObj.RightPanelWidth = 280
             MainFrame.Size = UDim2.fromOffset(1120, 720)
             HeaderTitle.TextSize = 16
             HeaderSubTitle.TextSize = 10
-            Sidebar.Size = UDim2.new(0, 310, 1, -52)
-            ContentArea.Size = UDim2.new(1, -310, 1, -52)
-            ContentArea.Position = UDim2.new(0, 310, 0, 52)
+            LeftNavigationPanel.Size = UDim2.new(0, 200, 1, -52)
+            RightProfilePanel.Size = UDim2.new(0, 280, 1, -52)
+            RightProfilePanel.Position = UDim2.new(1, -280, 0, 52)
+            MainContentPanel.Size = UDim2.new(1, -480, 1, -52)
+            MainContentPanel.Position = UDim2.new(0, 200, 0, 52)
         end
         MainFrame.Visible = true
     end
@@ -1324,7 +1344,7 @@ function Library:CreateWindow(config)
         NavBtn.BackgroundColor3 = Library.Theme.BG_Surface
         NavBtn.Text = ""
         NavBtn.LayoutOrder = isSettings and 9999 or 1
-        NavBtn.Parent = TabContainer
+        NavBtn.Parent = NavScroll
         Instance.new("UICorner", NavBtn).CornerRadius = UDim.new(0, 6)
 
         local NavLabel = Instance.new("TextLabel")
