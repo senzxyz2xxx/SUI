@@ -27,6 +27,8 @@ local HttpService      = SENZY.GetService("HttpService")
 local ContentProvider  = SENZY.GetService("ContentProvider")
 local UserInputService  = SENZY.GetService("UserInputService")
 local Players          = SENZY.GetService("Players")
+local GuiService       = SENZY.GetService("GuiService")
+local MarketplaceService = SENZY.GetService("MarketplaceService")
 
 local isStudio    = RunService:IsStudio()
 local LocalPlayer = Players.LocalPlayer
@@ -265,7 +267,209 @@ end
 
 
 --  WINDOW
-function SENZY:Window(Settings)
+--// Key System ---------------------------------------------------------
+-- Call before SENZY:CreateWindow. Shows its own full-screen prompt asking
+-- for a key, verifies it, then calls cfg.OnSuccess() so you can build the
+-- main window from there. Verification (pick one):
+--   cfg.Key       = "single-key-string"
+--   cfg.Keys      = { "key-one", "key-two" }
+--   cfg.Validate  = function(input) return true/false end -- e.g. HttpGet check
+-- cfg.SaveKey (default true) remembers a valid key on disk so returning
+-- users skip straight to OnSuccess next time.
+function SENZY:CreateKeySystem(cfg)
+	cfg = cfg or {}
+	local folder = SENZY.Folder .. "/key"
+	local keyFile = folder .. "/key.txt"
+
+	local function checkKey(key)
+		if type(cfg.Validate) == "function" then
+			local ok, res = pcall(cfg.Validate, key)
+			return ok and res == true
+		elseif cfg.Keys then
+			for _, k in ipairs(cfg.Keys) do
+				if k == key then return true end
+			end
+			return false
+		elseif cfg.Key then
+			return key == cfg.Key
+		end
+		return false
+	end
+
+	local saveKey = cfg.SaveKey
+	if saveKey == nil then saveKey = true end
+	local function persist(key)
+		if not (saveKey and writefile and makefolder and isfolder) then return end
+		pcall(function()
+			if not isfolder(folder) then makefolder(folder) end
+			writefile(keyFile, key)
+		end)
+	end
+
+	-- returning user with a saved, still-valid key: skip the prompt entirely
+	if saveKey and isfile and isfile(keyFile) then
+		local ok, saved = pcall(readfile, keyFile)
+		if ok and checkKey(saved) then
+			if cfg.OnSuccess then task.spawn(cfg.OnSuccess) end
+			return
+		end
+	end
+
+	local gui = GetGui()
+	local scrim = new("Frame", {
+		Name = "KeyScrim",
+		BackgroundColor3 = C.scrim,
+		BackgroundTransparency = 0.35,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		Parent = gui,
+	})
+	local panel = new("Frame", {
+		Name = "KeyPanel",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(340, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = C.panel,
+		BorderSizePixel = 0,
+		Parent = scrim,
+	}, {
+		corner(12), stroke(C.line2, 1, 0),
+		pad(22, 22, 22, 22), list(nil, 12, Enum.HorizontalAlignment.Center),
+	})
+	local panelScale = new("UIScale", { Scale = 0.94, Parent = panel })
+	tween(scrim, TQ, { BackgroundTransparency = 0.35 }):Play()
+	tween(panelScale, TQ, { Scale = 1 }):Play()
+
+	new("TextLabel", {
+		BackgroundTransparency = 1,
+		FontFace = mono(W.bold),
+		Text = cfg.Title or "Key System",
+		TextColor3 = C.ink,
+		TextSize = 18,
+		Size = UDim2.new(1, 0, 0, 20),
+		LayoutOrder = 1,
+		Parent = panel,
+	})
+	if cfg.Subtitle or cfg.Note then
+		new("TextLabel", {
+			BackgroundTransparency = 1,
+			FontFace = mono(W.med),
+			Text = cfg.Subtitle or cfg.Note,
+			TextColor3 = C.dim,
+			TextSize = 12,
+			TextWrapped = true,
+			AutomaticSize = Enum.AutomaticSize.Y,
+			Size = UDim2.new(1, 0, 0, 14),
+			LayoutOrder = 2,
+			Parent = panel,
+		})
+	end
+
+	local inputBox = new("Frame", {
+		BackgroundColor3 = C.raise,
+		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 0, 36),
+		LayoutOrder = 3,
+		Parent = panel,
+	}, { corner(8), stroke(C.line2, 1, 0), pad(0, 12, 0, 12) })
+	local input = new("TextBox", {
+		BackgroundTransparency = 1,
+		FontFace = mono(W.semi),
+		PlaceholderText = cfg.Placeholder or "Enter key...",
+		Text = "",
+		TextColor3 = C.ink,
+		PlaceholderColor3 = C.dim2,
+		TextSize = 13,
+		ClearTextOnFocus = false,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Size = UDim2.fromScale(1, 1),
+		Parent = inputBox,
+	})
+
+	local statusLbl = new("TextLabel", {
+		BackgroundTransparency = 1,
+		FontFace = mono(W.semi),
+		Text = "",
+		TextColor3 = C.bad,
+		TextSize = 11,
+		Visible = false,
+		Size = UDim2.new(1, 0, 0, 14),
+		LayoutOrder = 4,
+		Parent = panel,
+	})
+
+	local btnRow = new("Frame", {
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, 34),
+		LayoutOrder = 5,
+		Parent = panel,
+	}, { list(Enum.FillDirection.Horizontal, 8) })
+
+	local getKeyBtn = new("TextButton", {
+		BackgroundColor3 = C.raise,
+		AutoButtonColor = false,
+		BorderSizePixel = 0,
+		FontFace = mono(W.semi),
+		Text = "Get Key",
+		TextColor3 = C.ink2,
+		TextSize = 13,
+		Size = UDim2.new(0.42, 0, 1, 0),
+		Parent = btnRow,
+	}, { corner(7), stroke(C.line, 1, 0) })
+	getKeyBtn.MouseEnter:Connect(function() tween(getKeyBtn, T, { BackgroundColor3 = C.hover }):Play() end)
+	getKeyBtn.MouseLeave:Connect(function() tween(getKeyBtn, T, { BackgroundColor3 = C.raise }):Play() end)
+	getKeyBtn.MouseButton1Click:Connect(function()
+		if cfg.KeyLink then
+			local opened = GuiService and GuiService.OpenBrowserWindow
+				and pcall(function() GuiService:OpenBrowserWindow(cfg.KeyLink) end)
+			if not opened and setclipboard then pcall(setclipboard, cfg.KeyLink) end
+		end
+	end)
+
+	local submitBtn = new("TextButton", {
+		BackgroundColor3 = C.accent,
+		AutoButtonColor = false,
+		BorderSizePixel = 0,
+		FontFace = mono(W.bold),
+		Text = "Submit",
+		TextColor3 = C.scrim,
+		TextSize = 13,
+		Size = UDim2.new(0.58, -8, 1, 0),
+		Parent = btnRow,
+	}, { corner(7) })
+	submitBtn.MouseEnter:Connect(function() tween(submitBtn, T, { BackgroundTransparency = 0.15 }):Play() end)
+	submitBtn.MouseLeave:Connect(function() tween(submitBtn, T, { BackgroundTransparency = 0 }):Play() end)
+
+	local function fail(msg)
+		statusLbl.Text = msg or "Invalid key. Try again."
+		statusLbl.Visible = true
+		tween(inputBox, T, { BackgroundColor3 = C.raise }):Play()
+		local stroke_ = inputBox:FindFirstChildOfClass("UIStroke")
+		if stroke_ then
+			tween(stroke_, T, { Color = C.bad }):Play()
+			task.delay(1.2, function() tween(stroke_, T, { Color = C.line2 }):Play() end)
+		end
+	end
+	local function attempt()
+		local key = input.Text
+		if key == "" then fail("Please enter a key.") return end
+		if checkKey(key) then
+			persist(key)
+			local tw = tween(panelScale, TQ, { Scale = 0.94 })
+			tween(scrim, TQ, { BackgroundTransparency = 1 })
+			tw:Play(); tw.Completed:Wait()
+			gui:Destroy()
+			if cfg.OnSuccess then task.spawn(cfg.OnSuccess) end
+		else
+			fail()
+		end
+	end
+	submitBtn.MouseButton1Click:Connect(attempt)
+	input.FocusLost:Connect(function(enter) if enter then attempt() end end)
+end
+
+
 	Settings = Settings or {}
 	local Window = { Settings = Settings }
 	local gui = GetGui()
@@ -437,42 +641,16 @@ function SENZY:Window(Settings)
 		Parent = sidebar,
 	})
 
-	-- Tab list
-	local tabList = new("ScrollingFrame", {
-		Name = "TabList",
+	-- Profile card (top, always visible): avatar + name, current game/session,
+	-- and a one-tap Discord button. Sits right under the header, above the tabs.
+	local DISCORD_INVITE = Settings.DiscordInvite or "https://discord.gg/rhPgnAJE4B"
+	local PROFILE_H = 118
+	local profileCard = new("Frame", {
+		Name = "ProfileCard",
 		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
 		Position = UDim2.fromOffset(0, 67),
-		Size = UDim2.new(1, 0, 1, -67 - 62),
-		CanvasSize = UDim2.new(),
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollBarThickness = 2,
-		ScrollBarImageColor3 = C.accent,
-		ScrollBarImageTransparency = 0.4,
-		TopImage = "", BottomImage = "",
+		Size = UDim2.new(1, 0, 0, PROFILE_H),
 		Parent = sidebar,
-	}, {
-		list(nil, 3, Enum.HorizontalAlignment.Center),
-		pad(12, 0, 12, 0),
-	})
-
-	-- User info (bottom) — avatar with a soft gradient ring + online dot,
-	-- bold display name, and the handle shown as a small pill chip.
-	local userInfo = new("Frame", {
-		Name = "UserInfo",
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.new(1, 0, 0, 70),
-		BackgroundTransparency = 1,
-		Parent = sidebar,
-	}, {
-		pad(0, 14, 0, 14),
-	})
-	new("Frame", {
-		BackgroundColor3 = C.line,
-		BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 0, 1),
-		Parent = userInfo,
 	})
 
 	local isReady, headshotImage = pcall(function()
@@ -483,10 +661,9 @@ function SENZY:Window(Settings)
 	local avatarSlot = new("Frame", {
 		Name = "AvatarSlot",
 		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 2, 0.5, 2),
+		Position = UDim2.fromOffset(14, 10),
 		Size = UDim2.fromOffset(38, 38),
-		Parent = userInfo,
+		Parent = profileCard,
 	})
 	local headshot = new("ImageLabel", {
 		Name = "Headshot",
@@ -536,9 +713,9 @@ function SENZY:Window(Settings)
 		TextSize = 14,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.new(0, 48, 0.5, -13),
-		Size = UDim2.new(1, -52, 0, 15),
-		Parent = userInfo,
+		Position = UDim2.fromOffset(62, 12),
+		Size = UDim2.new(1, -76, 0, 15),
+		Parent = profileCard,
 	})
 	local usernameChip = new("Frame", {
 		Name = "UsernameChip",
@@ -546,9 +723,9 @@ function SENZY:Window(Settings)
 		BackgroundTransparency = 0.2,
 		BorderSizePixel = 0,
 		AutomaticSize = Enum.AutomaticSize.X,
-		Position = UDim2.new(0, 48, 0.5, 5),
+		Position = UDim2.fromOffset(62, 30),
 		Size = UDim2.new(0, 0, 0, 16),
-		Parent = userInfo,
+		Parent = profileCard,
 	}, { corner(8), pad(0, 8, 0, 8) })
 	local username = new("TextLabel", {
 		Name = "Username",
@@ -561,6 +738,86 @@ function SENZY:Window(Settings)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Size = UDim2.new(0, 0, 1, 0),
 		Parent = usernameChip,
+	})
+
+	-- current game / session line
+	local gameName do
+		local ok, info = pcall(function()
+			return MarketplaceService:GetProductInfo(game.PlaceId, Enum.InfoType.Asset)
+		end)
+		gameName = (ok and info and info.Name) or "Unknown Game"
+	end
+	local sessionLabel = new("TextLabel", {
+		Name = "Session",
+		BackgroundTransparency = 1,
+		FontFace = mono(W.med),
+		Text = "\226\151\143 " .. gameName,
+		TextColor3 = C.dim,
+		TextSize = 11,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Position = UDim2.fromOffset(14, 56),
+		Size = UDim2.new(1, -28, 0, 14),
+		Parent = profileCard,
+	})
+
+	-- one-tap Discord button
+	local discordBtn = new("TextButton", {
+		Name = "DiscordButton",
+		BackgroundColor3 = C.accent,
+		AutoButtonColor = false,
+		BorderSizePixel = 0,
+		Text = "",
+		Position = UDim2.fromOffset(14, 76),
+		Size = UDim2.new(1, -28, 0, 32),
+		Parent = profileCard,
+	}, { corner(8) })
+	new("TextLabel", {
+		BackgroundTransparency = 1,
+		FontFace = mono(W.bold),
+		Text = "Join Discord",
+		TextColor3 = C.scrim,
+		TextSize = 13,
+		Size = UDim2.fromScale(1, 1),
+		Parent = discordBtn,
+	})
+	discordBtn.MouseEnter:Connect(function() tween(discordBtn, T, { BackgroundTransparency = 0.15 }):Play() end)
+	discordBtn.MouseLeave:Connect(function() tween(discordBtn, T, { BackgroundTransparency = 0 }):Play() end)
+	discordBtn.MouseButton1Click:Connect(function()
+		local opened = false
+		if GuiService and GuiService.OpenBrowserWindow then
+			opened = pcall(function() GuiService:OpenBrowserWindow(DISCORD_INVITE) end)
+		end
+		if not opened and setclipboard then
+			pcall(setclipboard, DISCORD_INVITE)
+		end
+	end)
+
+	new("Frame", {
+		BackgroundColor3 = C.line,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(0, 67 + PROFILE_H),
+		Size = UDim2.new(1, 0, 0, 1),
+		Parent = sidebar,
+	})
+
+	-- Tab list
+	local tabList = new("ScrollingFrame", {
+		Name = "TabList",
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(0, 68 + PROFILE_H),
+		Size = UDim2.new(1, 0, 1, -(68 + PROFILE_H)),
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 2,
+		ScrollBarImageColor3 = C.accent,
+		ScrollBarImageTransparency = 0.4,
+		TopImage = "", BottomImage = "",
+		Parent = sidebar,
+	}, {
+		list(nil, 3, Enum.HorizontalAlignment.Center),
+		pad(12, 0, 12, 0),
 	})
 
 	--// Content -------------------------------------------------------
@@ -3007,6 +3264,18 @@ SENZY.CreateWindow = SENZY.Window
 
 --  DEMO
 function SENZY:Demo()
+	SENZY:CreateKeySystem({
+		Title = "SENZY",
+		Subtitle = "Enter your key to continue",
+		KeyLink = "https://discord.gg/rhPgnAJE4B",
+		Key = "senzy-demo-key",
+		OnSuccess = function()
+			SENZY:BuildDemoWindow()
+		end,
+	})
+end
+
+function SENZY:BuildDemoWindow()
 	-- Every constructor below uses the CreateX convention. The short-form
 	-- names (Window, Tab, Section, Button, ...) still work identically if
 	-- you're porting an older script.
@@ -3017,6 +3286,7 @@ function SENZY:Demo()
 		ShowUserInfo = true,
 		Keybind = Enum.KeyCode.RightControl,
 		-- Theme = { ok = Color3.fromRGB(120, 200, 255) }, -- optional per-window accent
+		-- DiscordInvite = "https://discord.gg/rhPgnAJE4B", -- powers the sidebar Discord button
 	})
 
 	Window:CreateGlobalSetting({
