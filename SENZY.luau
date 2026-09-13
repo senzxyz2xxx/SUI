@@ -286,7 +286,7 @@ function SENZY:Window(Settings)
 		BorderSizePixel = 0,
 		Parent = gui,
 	}, {
-		corner(8),
+		corner(10),
 		stroke(C.line2, 1, 0),
 	})
 	local baseScale = new("UIScale", { Parent = base })
@@ -329,7 +329,7 @@ function SENZY:Window(Settings)
 		Size = UDim2.new(0, SIDEBAR_W, 1, 0),
 		Parent = base,
 	}, {
-		corner(8),
+		corner(10),
 	})
 	-- square off the right edge of the rounded sidebar
 	new("Frame", {
@@ -367,7 +367,7 @@ function SENZY:Window(Settings)
 		FontFace = mono(W.bold),
 		Text = track(Settings.Title or "SENZY"),
 		TextColor3 = C.ink,
-		TextSize = 15,
+		TextSize = 16,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
 		Size = UDim2.new(1, -20, 0, 18),
@@ -376,10 +376,10 @@ function SENZY:Window(Settings)
 	local subtitleLabel = new("TextLabel", {
 		Name = "Subtitle",
 		BackgroundTransparency = 1,
-		FontFace = mono(W.med),
+		FontFace = mono(W.semi),
 		Text = Settings.Subtitle or "",
 		TextColor3 = C.dim,
-		TextSize = 11,
+		TextSize = 12,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
 		Position = UDim2.fromOffset(0, 22),
@@ -424,7 +424,7 @@ function SENZY:Window(Settings)
 		CanvasSize = UDim2.new(),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		ScrollBarThickness = 2,
-		ScrollBarImageColor3 = C.line2,
+		ScrollBarImageColor3 = C.accent,
 		ScrollBarImageTransparency = 0.4,
 		TopImage = "", BottomImage = "",
 		Parent = sidebar,
@@ -433,12 +433,13 @@ function SENZY:Window(Settings)
 		pad(12, 0, 12, 0),
 	})
 
-	-- User info (bottom)
+	-- User info (bottom) — avatar with a soft gradient ring + online dot,
+	-- bold display name, and the handle shown as a small pill chip.
 	local userInfo = new("Frame", {
 		Name = "UserInfo",
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.new(1, 0, 0, 62),
+		Size = UDim2.new(1, 0, 0, 70),
 		BackgroundTransparency = 1,
 		Parent = sidebar,
 	}, {
@@ -456,43 +457,87 @@ function SENZY:Window(Settings)
 			Enum.ThumbnailType.AvatarBust, Enum.ThumbnailSize.Size48x48)
 	end)
 
+	local avatarSlot = new("Frame", {
+		Name = "AvatarSlot",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 2, 0.5, 2),
+		Size = UDim2.fromOffset(38, 38),
+		Parent = userInfo,
+	})
 	local headshot = new("ImageLabel", {
 		Name = "Headshot",
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 0, 0.5, 2),
-		Size = UDim2.fromOffset(30, 30),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(36, 36),
 		BackgroundColor3 = C.raise,
 		BorderSizePixel = 0,
 		Image = (isReady and headshotImage) or "",
-		Parent = userInfo,
+		ZIndex = 2,
+		Parent = avatarSlot,
 	}, {
-		corner(15),
-		stroke(C.line2, 1, 0),
+		corner(18),
+		stroke(C.ground, 2, 0),
 	})
+	-- soft two-tone accent ring behind the avatar for a bit of polish
+	new("Frame", {
+		Name = "AvatarRing",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(38, 38),
+		ZIndex = 1,
+		Parent = avatarSlot,
+	}, {
+		corner(19),
+		stroke(C.accent, 2, 0.15),
+	})
+	-- online status dot, cut out from the ring with a background-colored border
+	new("Frame", {
+		Name = "StatusDot",
+		BackgroundColor3 = C.ok,
+		BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.fromScale(1, 1),
+		Size = UDim2.fromOffset(11, 11),
+		ZIndex = 3,
+		Parent = avatarSlot,
+	}, { corner(6), stroke(C.ground, 2, 0) })
 
 	local displayName = new("TextLabel", {
 		Name = "DisplayName",
 		BackgroundTransparency = 1,
-		FontFace = mono(W.semi),
+		FontFace = mono(W.bold),
 		Text = LocalPlayer.DisplayName,
-		TextColor3 = C.ink2,
-		TextSize = 12,
+		TextColor3 = C.ink,
+		TextSize = 14,
+		TextTruncate = Enum.TextTruncate.AtEnd,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.new(0, 40, 0.5, -9),
-		Size = UDim2.new(1, -44, 0, 13),
+		Position = UDim2.new(0, 48, 0.5, -13),
+		Size = UDim2.new(1, -52, 0, 15),
 		Parent = userInfo,
 	})
+	local usernameChip = new("Frame", {
+		Name = "UsernameChip",
+		BackgroundColor3 = C.raise,
+		BackgroundTransparency = 0.2,
+		BorderSizePixel = 0,
+		AutomaticSize = Enum.AutomaticSize.X,
+		Position = UDim2.new(0, 48, 0.5, 5),
+		Size = UDim2.new(0, 0, 0, 16),
+		Parent = userInfo,
+	}, { corner(8), pad(0, 8, 0, 8) })
 	local username = new("TextLabel", {
 		Name = "Username",
 		BackgroundTransparency = 1,
-		FontFace = mono(W.reg),
+		FontFace = mono(W.semi),
 		Text = "@" .. LocalPlayer.Name,
-		TextColor3 = C.dim,
+		TextColor3 = C.label,
 		TextSize = 11,
+		AutomaticSize = Enum.AutomaticSize.X,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		Position = UDim2.new(0, 40, 0.5, 5),
-		Size = UDim2.new(1, -44, 0, 12),
-		Parent = userInfo,
+		Size = UDim2.new(0, 0, 1, 0),
+		Parent = usernameChip,
 	})
 
 	--// Content -------------------------------------------------------
@@ -525,10 +570,10 @@ function SENZY:Window(Settings)
 	local currentTabLabel = new("TextLabel", {
 		Name = "CurrentTab",
 		BackgroundTransparency = 1,
-		FontFace = mono(W.semi),
+		FontFace = mono(W.bold),
 		Text = "",
 		TextColor3 = C.ink2,
-		TextSize = 13,
+		TextSize = 14,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.fromScale(0, 0.5),
@@ -556,7 +601,7 @@ function SENZY:Window(Settings)
 			Text = txt,
 			FontFace = mono(W.bold),
 			TextColor3 = C.label,
-			TextSize = 13,
+			TextSize = 14,
 			LayoutOrder = order,
 			Size = UDim2.fromOffset(22, 22),
 			Parent = controls,
@@ -699,7 +744,7 @@ function SENZY:Window(Settings)
 			FontFace = mono(W.bold),
 			Text = "•",
 			TextColor3 = C.ink,
-			TextSize = 14,
+			TextSize = 15,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.fromScale(0, 0.5),
@@ -708,10 +753,10 @@ function SENZY:Window(Settings)
 		})
 		local nameLbl = new("TextLabel", {
 			BackgroundTransparency = 1,
-			FontFace = mono(W.med),
+			FontFace = mono(W.semi),
 			Text = cfg.Name,
 			TextColor3 = C.label,
-			TextSize = 12,
+			TextSize = 13,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.new(0, 18, 0.5, 0),
@@ -774,6 +819,16 @@ function SENZY:Window(Settings)
 			}, { corner(6), pad(0, 10, 0, 12) })
 			local swStroke = stroke(C.line2, 1, 1)
 			swStroke.Parent = switcher
+			-- slim accent indicator that grows in on the active tab
+			local swIndicator = new("Frame", {
+				Name = "Indicator",
+				BackgroundColor3 = C.accent,
+				BorderSizePixel = 0,
+				AnchorPoint = Vector2.new(0, 0.5),
+				Position = UDim2.fromScale(0, 0.5),
+				Size = UDim2.fromOffset(3, 0),
+				Parent = switcher,
+			}, { corner(2) })
 
 			local swIcon
 			if tset.Image then
@@ -790,10 +845,10 @@ function SENZY:Window(Settings)
 			end
 			local swName = new("TextLabel", {
 				BackgroundTransparency = 1,
-				FontFace = mono(W.med),
+				FontFace = mono(W.semi),
 				Text = tset.Name or "Tab",
 				TextColor3 = C.label,
-				TextSize = 12,
+				TextSize = 13,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				Position = UDim2.new(0, tset.Image and 24 or 0, 0, 0),
 				Size = UDim2.new(1, -(tset.Image and 24 or 0), 1, 0),
@@ -814,7 +869,7 @@ function SENZY:Window(Settings)
 				CanvasSize = UDim2.new(),
 				AutomaticCanvasSize = Enum.AutomaticSize.Y,
 				ScrollBarThickness = 2,
-				ScrollBarImageColor3 = C.line2,
+				ScrollBarImageColor3 = C.accent,
 				ScrollBarImageTransparency = 0.4,
 				TopImage = "", BottomImage = "",
 				Parent = tabContent,
@@ -864,7 +919,7 @@ function SENZY:Window(Settings)
 					Size = UDim2.new(1, 0, 0, 0),
 					Parent = host,
 				}, {
-					corner(6), stroke(C.line2, 1, 0),
+					corner(10), stroke(C.line2, 1, 0),
 					pad(16, 16, 16, 16),
 					list(nil, 8),
 				})
@@ -875,7 +930,7 @@ function SENZY:Window(Settings)
 						FontFace = mono(W.bold),
 						Text = track(string.upper(sset.Name)),
 						TextColor3 = C.ink,
-						TextSize = 11,
+						TextSize = 12,
 						TextXAlignment = Enum.TextXAlignment.Left,
 						Size = UDim2.new(1, 0, 0, 14),
 						LayoutOrder = -10,
@@ -895,10 +950,10 @@ function SENZY:Window(Settings)
 				local function nameLabel(row, txt, rightPad)
 					return new("TextLabel", {
 						BackgroundTransparency = 1,
-						FontFace = mono(W.med),
+						FontFace = mono(W.semi),
 						Text = txt,
 						TextColor3 = C.ink2,
-						TextSize = 12,
+						TextSize = 13,
 						TextTruncate = Enum.TextTruncate.AtEnd,
 						TextXAlignment = Enum.TextXAlignment.Left,
 						AnchorPoint = Vector2.new(0, 0.5),
@@ -918,23 +973,26 @@ function SENZY:Window(Settings)
 						Text = "",
 						Size = UDim2.new(1, 0, 0, 32),
 						Parent = card,
-					}, { corner(5), stroke(C.line, 1, 0) })
+					}, { corner(6), stroke(C.line, 1, 0) })
+					local btnGlow = btn:FindFirstChildOfClass("UIStroke")
 					local lbl = new("TextLabel", {
 						BackgroundTransparency = 1,
-						FontFace = mono(W.semi),
+						FontFace = mono(W.bold),
 						Text = cfg.Name,
 						TextColor3 = C.ink2,
-						TextSize = 12,
+						TextSize = 13,
 						Size = UDim2.fromScale(1, 1),
 						Parent = btn,
 					})
 					btn.MouseEnter:Connect(function()
 						tween(btn, T, { BackgroundColor3 = C.hover }):Play()
 						tween(lbl, T, { TextColor3 = C.ink }):Play()
+						tween(btnGlow, T, { Color = C.accent, Transparency = 0.35 }):Play()
 					end)
 					btn.MouseLeave:Connect(function()
 						tween(btn, T, { BackgroundColor3 = C.raise }):Play()
 						tween(lbl, T, { TextColor3 = C.ink2 }):Play()
+						tween(btnGlow, T, { Color = C.line, Transparency = 0 }):Play()
 					end)
 					btn.MouseButton1Click:Connect(function()
 						if cfg.Callback then task.spawn(cfg.Callback) end
@@ -973,7 +1031,7 @@ function SENZY:Window(Settings)
 					local st = cfg.Default and true or false
 					local function render(fireCb)
 						if st then
-							tween(pill, T, { BackgroundColor3 = C.ink }):Play()
+							tween(pill, T, { BackgroundColor3 = C.accent }):Play()
 							tween(knob, T, {
 								Position = UDim2.new(1, -17, 0.5, 0),
 								BackgroundColor3 = C.ground,
@@ -1008,10 +1066,10 @@ function SENZY:Window(Settings)
 					local row = baseRow(42)
 					new("TextLabel", {
 						BackgroundTransparency = 1,
-						FontFace = mono(W.med),
+						FontFace = mono(W.semi),
 						Text = cfg.Name,
 						TextColor3 = C.ink2,
-						TextSize = 12,
+						TextSize = 13,
 						TextXAlignment = Enum.TextXAlignment.Left,
 						TextTruncate = Enum.TextTruncate.AtEnd,
 						ClipsDescendants = true,
@@ -1022,10 +1080,10 @@ function SENZY:Window(Settings)
 					local valBox = new("TextBox", {
 						BackgroundColor3 = C.raise,
 						BorderSizePixel = 0,
-						FontFace = mono(W.med),
+						FontFace = mono(W.semi),
 						Text = "",
 						TextColor3 = C.ink,
-						TextSize = 11,
+						TextSize = 12,
 						ClearTextOnFocus = false,
 						AnchorPoint = Vector2.new(1, 0),
 						Position = UDim2.fromScale(1, 0),
@@ -1042,13 +1100,13 @@ function SENZY:Window(Settings)
 						Parent = row,
 					}, { corner(2) })
 					local fill = new("Frame", {
-						BackgroundColor3 = C.ink,
+						BackgroundColor3 = C.accent,
 						BorderSizePixel = 0,
 						Size = UDim2.fromScale(0, 1),
 						Parent = barBg,
 					}, { corner(2) })
 					local knob = new("TextButton", {
-						BackgroundColor3 = C.ink,
+						BackgroundColor3 = C.accent,
 						AutoButtonColor = false,
 						BorderSizePixel = 0,
 						Text = "",
@@ -1141,12 +1199,12 @@ function SENZY:Window(Settings)
 					local box = new("TextBox", {
 						BackgroundColor3 = C.raise,
 						BorderSizePixel = 0,
-						FontFace = mono(W.med),
+						FontFace = mono(W.semi),
 						Text = cfg.Default or "",
 						PlaceholderText = cfg.Placeholder or "",
 						PlaceholderColor3 = C.dim2,
 						TextColor3 = C.ink,
-						TextSize = 11,
+						TextSize = 12,
 						TextXAlignment = Enum.TextXAlignment.Left,
 						ClearTextOnFocus = false,
 						ClipsDescendants = true,
@@ -1200,10 +1258,10 @@ function SENZY:Window(Settings)
 						BackgroundColor3 = C.raise,
 						AutoButtonColor = false,
 						BorderSizePixel = 0,
-						FontFace = mono(W.med),
+						FontFace = mono(W.semi),
 						Text = cfg.Default and cfg.Default.Name or "...",
 						TextColor3 = C.ink,
-						TextSize = 11,
+						TextSize = 12,
 						AutomaticSize = Enum.AutomaticSize.X,
 						AnchorPoint = Vector2.new(1, 0.5),
 						Position = UDim2.fromScale(1, 0.5),
@@ -1277,9 +1335,9 @@ function SENZY:Window(Settings)
 					}, { pad(0, 12, 0, 12) })
 					local headLbl = new("TextLabel", {
 						BackgroundTransparency = 1,
-						FontFace = mono(W.med),
+						FontFace = mono(W.semi),
 						TextColor3 = C.ink2,
-						TextSize = 12,
+						TextSize = 13,
 						TextTruncate = Enum.TextTruncate.AtEnd,
 						TextXAlignment = Enum.TextXAlignment.Left,
 						Size = UDim2.new(1, -18, 1, 0),
@@ -1290,7 +1348,7 @@ function SENZY:Window(Settings)
 						FontFace = mono(W.bold),
 						Text = "v",
 						TextColor3 = C.dim,
-						TextSize = 11,
+						TextSize = 12,
 						AnchorPoint = Vector2.new(1, 0.5),
 						Position = UDim2.fromScale(1, 0.5),
 						Size = UDim2.fromOffset(12, 12),
@@ -1317,12 +1375,12 @@ function SENZY:Window(Settings)
 					}, { corner(5), stroke(C.line, 1, 0), pad(0, 8, 0, 8) })
 					local searchBox = new("TextBox", {
 						BackgroundTransparency = 1,
-						FontFace = mono(W.med),
+						FontFace = mono(W.semi),
 						PlaceholderText = "Search...",
 						PlaceholderColor3 = C.dim2,
 						Text = "",
 						TextColor3 = C.ink2,
-						TextSize = 12,
+						TextSize = 13,
 						ClipsDescendants = true,
 						TextTruncate = Enum.TextTruncate.AtEnd,
 						TextXAlignment = Enum.TextXAlignment.Left,
@@ -1417,7 +1475,7 @@ function SENZY:Window(Settings)
 							FontFace = mono(W.bold),
 							Text = "◦",
 							TextColor3 = C.dim2,
-							TextSize = 13,
+							TextSize = 14,
 							TextXAlignment = Enum.TextXAlignment.Left,
 							AnchorPoint = Vector2.new(0, 0.5),
 							Position = UDim2.fromScale(0, 0.5),
@@ -1426,10 +1484,10 @@ function SENZY:Window(Settings)
 						})
 						local lbl = new("TextLabel", {
 							BackgroundTransparency = 1,
-							FontFace = mono(W.med),
+							FontFace = mono(W.semi),
 							Text = v,
 							TextColor3 = C.label,
-							TextSize = 12,
+							TextSize = 13,
 							TextXAlignment = Enum.TextXAlignment.Left,
 							AnchorPoint = Vector2.new(0, 0.5),
 							Position = UDim2.new(0, 18, 0.5, 0),
@@ -1557,7 +1615,7 @@ function SENZY:Window(Settings)
 						ZIndex = 41,
 						Parent = modal,
 					}, {
-						corner(8), stroke(C.line2, 1, 0),
+						corner(10), stroke(C.line2, 1, 0),
 						pad(16, 16, 16, 16),
 						list(nil, 12, Enum.HorizontalAlignment.Center),
 					})
@@ -1566,7 +1624,7 @@ function SENZY:Window(Settings)
 						FontFace = mono(W.bold),
 						Text = track(string.upper(cfg.Name)),
 						TextColor3 = C.dim,
-						TextSize = 11,
+						TextSize = 12,
 						TextXAlignment = Enum.TextXAlignment.Left,
 						Size = UDim2.new(1, 0, 0, 14),
 						ZIndex = 41,
@@ -1638,10 +1696,10 @@ function SENZY:Window(Settings)
 						})
 						new("TextLabel", {
 							BackgroundTransparency = 1,
-							FontFace = mono(W.med),
+							FontFace = mono(W.semi),
 							Text = labelText,
 							TextColor3 = C.label,
-							TextSize = 12,
+							TextSize = 13,
 							TextXAlignment = Enum.TextXAlignment.Left,
 							Size = UDim2.new(0.5, 0, 1, 0),
 							ZIndex = 41,
@@ -1650,10 +1708,10 @@ function SENZY:Window(Settings)
 						local tb = new("TextBox", {
 							BackgroundColor3 = C.raise,
 							BorderSizePixel = 0,
-							FontFace = mono(W.med),
+							FontFace = mono(W.semi),
 							Text = "",
 							TextColor3 = C.ink,
-							TextSize = 11,
+							TextSize = 12,
 							ClearTextOnFocus = false,
 							AnchorPoint = Vector2.new(1, 0.5),
 							Position = UDim2.fromScale(1, 0.5),
@@ -1682,10 +1740,10 @@ function SENZY:Window(Settings)
 							BackgroundColor3 = C.raise,
 							AutoButtonColor = false,
 							BorderSizePixel = 0,
-							FontFace = mono(W.semi),
+							FontFace = mono(W.bold),
 							Text = txt,
 							TextColor3 = C.ink2,
-							TextSize = 12,
+							TextSize = 13,
 							LayoutOrder = order,
 							Size = UDim2.new(0.5, -4, 0, 30),
 							ZIndex = 41,
@@ -1833,7 +1891,7 @@ function SENZY:Window(Settings)
 						FontFace = mono(W.bold),
 						Text = track(string.upper(cfg.Text or cfg.Name or "")),
 						TextColor3 = C.ink2,
-						TextSize = 12,
+						TextSize = 13,
 						TextXAlignment = Enum.TextXAlignment.Left,
 						AutomaticSize = Enum.AutomaticSize.Y,
 						Size = UDim2.new(1, 0, 0, 16),
@@ -1848,11 +1906,11 @@ function SENZY:Window(Settings)
 					local L = { Settings = cfg }
 					local lbl = new("TextLabel", {
 						BackgroundTransparency = 1,
-						FontFace = mono(W.reg),
+						FontFace = mono(W.med),
 						RichText = true,
 						Text = cfg.Text or cfg.Name or "",
 						TextColor3 = C.label,
-						TextSize = 12,
+						TextSize = 13,
 						TextWrapped = true,
 						TextXAlignment = Enum.TextXAlignment.Left,
 						AutomaticSize = Enum.AutomaticSize.Y,
@@ -1868,11 +1926,11 @@ function SENZY:Window(Settings)
 					local L = { Settings = cfg }
 					local lbl = new("TextLabel", {
 						BackgroundTransparency = 1,
-						FontFace = mono(W.reg),
+						FontFace = mono(W.med),
 						RichText = true,
 						Text = cfg.Text or cfg.Name or "",
 						TextColor3 = C.dim,
-						TextSize = 11,
+						TextSize = 12,
 						TextWrapped = true,
 						TextXAlignment = Enum.TextXAlignment.Left,
 						AutomaticSize = Enum.AutomaticSize.Y,
@@ -1897,10 +1955,10 @@ function SENZY:Window(Settings)
 					}, { list(nil, 5) })
 					local hdrProps = {
 						BackgroundTransparency = 1,
-						FontFace = mono(W.semi),
+						FontFace = mono(W.bold),
 						Text = rawHeader,
 						TextColor3 = C.ink2,
-						TextSize = 12,
+						TextSize = 13,
 						TextWrapped = true,
 						TextXAlignment = Enum.TextXAlignment.Left,
 						AutomaticSize = Enum.AutomaticSize.Y,
@@ -1911,11 +1969,11 @@ function SENZY:Window(Settings)
 					local hdr = new(collapsible and "TextButton" or "TextLabel", hdrProps)
 					local bdy = new("TextLabel", {
 						BackgroundTransparency = 1,
-						FontFace = mono(W.reg),
+						FontFace = mono(W.med),
 						RichText = cfg.BodyRichText == true,
 						Text = cfg.Body or "",
 						TextColor3 = C.dim,
-						TextSize = 11,
+						TextSize = 12,
 						TextWrapped = true,
 						TextXAlignment = Enum.TextXAlignment.Left,
 						AutomaticSize = Enum.AutomaticSize.Y,
@@ -2029,6 +2087,7 @@ function SENZY:Window(Settings)
 					local on = (btn == switcher)
 					tween(btn, T, { BackgroundTransparency = on and 0 or 1 }):Play()
 					tween(info.stroke, T, { Transparency = on and 0 or 1 }):Play()
+					tween(info.indicator, T, { Size = UDim2.fromOffset(3, on and 16 or 0) }):Play()
 					if info.icon then tween(info.icon, T, { ImageTransparency = on and 0 or 0.4 }):Play() end
 					tween(info.name, T, { TextColor3 = on and C.ink or C.label }):Play()
 				end
@@ -2049,7 +2108,7 @@ function SENZY:Window(Settings)
 				end
 			end)
 
-			tabs[switcher] = { content = tabContent, stroke = swStroke, icon = swIcon, name = swName }
+			tabs[switcher] = { content = tabContent, stroke = swStroke, icon = swIcon, name = swName, indicator = swIndicator }
 			function Tab:Select() selectThis() end
 
 			--// Config section (drop-in) ---------------------------
@@ -2135,7 +2194,7 @@ function SENZY:Window(Settings)
 			ClipsDescendants = true,
 			Parent = notifications,
 		}, {
-			corner(8), stroke(C.line2, 1, 0),
+			corner(10), stroke(C.line2, 1, 0),
 		})
 		local scale = new("UIScale", { Scale = 0, Parent = card })
 
@@ -2167,17 +2226,17 @@ function SENZY:Window(Settings)
 			FontFace = mono(W.bold),
 			Text = kind.glyph,
 			TextColor3 = accentColor,
-			TextSize = 12,
+			TextSize = 13,
 			Size = UDim2.fromOffset(10, 14),
 			Parent = titleRow,
 		})
 		local titleLbl = new("TextLabel", {
 			Name = "Title",
 			BackgroundTransparency = 1,
-			FontFace = mono(W.semi),
+			FontFace = mono(W.bold),
 			Text = cfg.Title or "SENZY",
 			TextColor3 = C.ink,
-			TextSize = 12,
+			TextSize = 13,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			AutomaticSize = Enum.AutomaticSize.Y,
 			Size = UDim2.new(1, -16, 0, 14),
@@ -2186,10 +2245,10 @@ function SENZY:Window(Settings)
 		new("TextLabel", {
 			Name = "Description",
 			BackgroundTransparency = 1,
-			FontFace = mono(W.reg),
+			FontFace = mono(W.med),
 			Text = cfg.Description or "",
 			TextColor3 = C.dim,
-			TextSize = 11,
+			TextSize = 12,
 			TextWrapped = true,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			AutomaticSize = Enum.AutomaticSize.Y,
@@ -2203,10 +2262,10 @@ function SENZY:Window(Settings)
 				BackgroundColor3 = C.raise,
 				AutoButtonColor = false,
 				BorderSizePixel = 0,
-				FontFace = mono(W.semi),
+				FontFace = mono(W.bold),
 				Text = cfg.Button.Name or "Action",
 				TextColor3 = C.ink2,
-				TextSize = 11,
+				TextSize = 12,
 				LayoutOrder = 2,
 				Size = UDim2.new(1, 0, 0, 26),
 				Parent = body,
@@ -2275,7 +2334,7 @@ function SENZY:Window(Settings)
 			ZIndex = 51,
 			Parent = canvas,
 		}, {
-			corner(8), stroke(C.line2, 1, 0),
+			corner(10), stroke(C.line2, 1, 0),
 			pad(18, 18, 18, 18), list(nil, 10),
 		})
 
@@ -2284,7 +2343,7 @@ function SENZY:Window(Settings)
 			FontFace = mono(W.bold),
 			Text = cfg.Title or "SENZY",
 			TextColor3 = C.ink,
-			TextSize = 15,
+			TextSize = 16,
 			TextWrapped = true,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			AutomaticSize = Enum.AutomaticSize.Y,
@@ -2294,10 +2353,10 @@ function SENZY:Window(Settings)
 		})
 		new("TextLabel", {
 			BackgroundTransparency = 1,
-			FontFace = mono(W.reg),
+			FontFace = mono(W.med),
 			Text = cfg.Description or "",
 			TextColor3 = C.dim,
-			TextSize = 12,
+			TextSize = 13,
 			TextWrapped = true,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			AutomaticSize = Enum.AutomaticSize.Y,
@@ -2330,10 +2389,10 @@ function SENZY:Window(Settings)
 				BackgroundColor3 = C.raise,
 				AutoButtonColor = false,
 				BorderSizePixel = 0,
-				FontFace = mono(W.semi),
+				FontFace = mono(W.bold),
 				Text = b.Name,
 				TextColor3 = C.ink2,
-				TextSize = 12,
+				TextSize = 13,
 				LayoutOrder = i,
 				Size = UDim2.new(1, 0, 0, 34),
 				ZIndex = 51,
@@ -2439,7 +2498,7 @@ function SENZY:Window(Settings)
 			FontFace = mono(W.bold),
 			Text = "S",
 			TextColor3 = C.ink,
-			TextSize = 22,
+			TextSize = 23,
 			Size = UDim2.fromScale(1, 1),
 			ZIndex = 25,
 			Parent = restoreBtn,
