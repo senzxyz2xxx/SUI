@@ -106,11 +106,34 @@ SENZY.Themes = {
 		info   = Color3.fromRGB(190, 175, 245),
 		accent = Color3.fromRGB(230, 180, 235),
 	},
+	-- Plain black/grey surfaces (same as Mono) with a single vivid pink
+	-- accent color carried by toggles, sliders, the active-tab indicator,
+	-- the avatar ring, button hover glow, and scrollbars.
+	PinkAccent = {
+		scrim  = Color3.fromRGB(0, 0, 0),
+		ground = Color3.fromRGB(10, 10, 10),
+		panel  = Color3.fromRGB(15, 15, 15),
+		raise  = Color3.fromRGB(24, 24, 24),
+		hover  = Color3.fromRGB(32, 32, 32),
+		ink    = Color3.fromRGB(240, 240, 240),
+		ink2   = Color3.fromRGB(210, 210, 210),
+		label  = Color3.fromRGB(178, 178, 178),
+		dim    = Color3.fromRGB(152, 152, 152),
+		dim2   = Color3.fromRGB(96, 96, 96),
+		line   = Color3.fromRGB(36, 36, 36),
+		line2  = Color3.fromRGB(58, 58, 58),
+		ok     = Color3.fromRGB(120, 230, 150),
+		bad    = Color3.fromRGB(240, 120, 120),
+		warn   = Color3.fromRGB(240, 200, 110),
+		info   = Color3.fromRGB(120, 180, 240),
+		accent = Color3.fromRGB(235, 120, 175),
+	},
 }
 
--- Ships with the pastel pink/purple look by default.
--- Switch back anytime with SENZY:SetTheme(SENZY.Themes.Mono).
-SENZY:SetTheme(SENZY.Themes.PastelPinkPurple)
+-- Ships with the black-background / pink-accent look by default.
+-- SENZY:SetTheme(SENZY.Themes.Mono) for plain greyscale, or
+-- SENZY:SetTheme(SENZY.Themes.PastelPinkPurple) for tinted mauve surfaces too.
+SENZY:SetTheme(SENZY.Themes.PinkAccent)
 
 -- Module-level default, used by helper functions declared before any window
 -- exists (e.g. stroke()'s default color). Each window shadows this with its
@@ -1883,6 +1906,292 @@ function SENZY:Window(Settings)
 					return CP
 				end
 
+				--// MultiSelect (e.g. "Rarities") --------------------
+				-- A row with a preview box + expand icon that opens a
+				-- full-window picker: title, close, Select All / Deselect
+				-- All, and the options laid out in two columns.
+				function Section:MultiSelect(cfg, Flag)
+					cfg = cfg or {}
+					local MS = { Settings = cfg, Class = "MultiSelect" }
+					local options = cfg.Options or {}
+					local selected = {}
+					if cfg.Default then
+						for _, v in ipairs(cfg.Default) do selected[v] = true end
+					end
+
+					local row = baseRow(56)
+					new("TextLabel", {
+						BackgroundTransparency = 1,
+						FontFace = mono(W.semi),
+						Text = cfg.Name or "Select",
+						TextColor3 = C.ink2,
+						TextSize = 13,
+						TextXAlignment = Enum.TextXAlignment.Left,
+						Size = UDim2.new(1, 0, 0, 16),
+						Parent = row,
+					})
+
+					local box = new("TextButton", {
+						BackgroundColor3 = C.raise,
+						AutoButtonColor = false,
+						BorderSizePixel = 0,
+						Text = "",
+						Position = UDim2.new(0, 0, 0, 22),
+						Size = UDim2.new(1, 0, 0, 30),
+						Parent = row,
+					}, { corner(7), stroke(C.line2, 1, 0) })
+					local summary = new("TextLabel", {
+						BackgroundTransparency = 1,
+						FontFace = mono(W.med),
+						Text = "---",
+						TextColor3 = C.dim,
+						TextSize = 12,
+						TextTruncate = Enum.TextTruncate.AtEnd,
+						TextXAlignment = Enum.TextXAlignment.Left,
+						AnchorPoint = Vector2.new(0, 0.5),
+						Position = UDim2.fromScale(0, 0.5),
+						Size = UDim2.new(1, -40, 1, 0),
+						Parent = box,
+					})
+					new("TextLabel", {
+						Name = "ExpandIcon",
+						BackgroundTransparency = 1,
+						FontFace = mono(W.bold),
+						Text = ">",
+						Rotation = -45,
+						TextColor3 = C.dim,
+						TextSize = 15,
+						AnchorPoint = Vector2.new(1, 0.5),
+						Position = UDim2.new(1, -12, 0.5, 0),
+						Size = UDim2.fromOffset(14, 14),
+						Parent = box,
+					})
+
+					--// full-window picker modal ------------------------
+					local modal = new("Frame", {
+						BackgroundColor3 = C.scrim,
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Size = UDim2.fromScale(1, 1),
+						Visible = false,
+						ZIndex = 40,
+						Parent = base,
+					}, { corner(10) })
+					local pnl = new("Frame", {
+						AnchorPoint = Vector2.new(0.5, 0.5),
+						Position = UDim2.fromScale(0.5, 0.5),
+						Size = UDim2.new(0.88, 0, 0.84, 0),
+						BackgroundColor3 = C.panel,
+						BorderSizePixel = 0,
+						ClipsDescendants = true,
+						ZIndex = 41,
+						Parent = modal,
+					}, { corner(12), stroke(C.line2, 1, 0) })
+					local pnlScale = new("UIScale", { Scale = 0.92, Parent = pnl })
+
+					local header = new("Frame", {
+						BackgroundTransparency = 1,
+						Size = UDim2.new(1, 0, 0, 46),
+						ZIndex = 41,
+						Parent = pnl,
+					}, { pad(0, 18, 0, 18) })
+					new("TextLabel", {
+						BackgroundTransparency = 1,
+						FontFace = mono(W.bold),
+						Text = cfg.Name or "Select",
+						TextColor3 = C.ink,
+						TextSize = 16,
+						TextXAlignment = Enum.TextXAlignment.Left,
+						AnchorPoint = Vector2.new(0, 0.5),
+						Position = UDim2.fromScale(0, 0.5),
+						Size = UDim2.new(1, -30, 1, 0),
+						ZIndex = 41,
+						Parent = header,
+					})
+					local closeBtn = new("TextButton", {
+						BackgroundTransparency = 1,
+						FontFace = mono(W.bold),
+						Text = "\226\156\149",
+						TextColor3 = C.dim,
+						TextSize = 15,
+						AnchorPoint = Vector2.new(1, 0.5),
+						Position = UDim2.fromScale(1, 0.5),
+						Size = UDim2.fromOffset(20, 20),
+						ZIndex = 42,
+						Parent = header,
+					})
+					closeBtn.MouseEnter:Connect(function() tween(closeBtn, T, { TextColor3 = C.ink }):Play() end)
+					closeBtn.MouseLeave:Connect(function() tween(closeBtn, T, { TextColor3 = C.dim }):Play() end)
+
+					new("Frame", {
+						BackgroundColor3 = C.line,
+						BorderSizePixel = 0,
+						Position = UDim2.new(0, 0, 0, 46),
+						Size = UDim2.new(1, 0, 0, 1),
+						ZIndex = 41,
+						Parent = pnl,
+					})
+
+					local actions = new("Frame", {
+						BackgroundTransparency = 1,
+						Position = UDim2.new(0, 0, 0, 47),
+						Size = UDim2.new(1, 0, 0, 38),
+						ZIndex = 41,
+						Parent = pnl,
+					})
+					local selAllBtn = new("TextButton", {
+						BackgroundTransparency = 1,
+						AutoButtonColor = false,
+						FontFace = mono(W.bold),
+						Text = "Select All",
+						TextColor3 = C.accent,
+						TextSize = 13,
+						Size = UDim2.new(0.5, 0, 1, 0),
+						ZIndex = 41,
+						Parent = actions,
+					})
+					local deselAllBtn = new("TextButton", {
+						BackgroundTransparency = 1,
+						AutoButtonColor = false,
+						FontFace = mono(W.semi),
+						Text = "Deselect All",
+						TextColor3 = C.dim,
+						TextSize = 13,
+						Position = UDim2.new(0.5, 0, 0, 0),
+						Size = UDim2.new(0.5, 0, 1, 0),
+						ZIndex = 41,
+						Parent = actions,
+					})
+					new("Frame", {
+						BackgroundColor3 = C.line,
+						BorderSizePixel = 0,
+						Position = UDim2.new(0, 0, 0, 85),
+						Size = UDim2.new(1, 0, 0, 1),
+						ZIndex = 41,
+						Parent = pnl,
+					})
+
+					local listHost = new("ScrollingFrame", {
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Position = UDim2.new(0, 0, 0, 86),
+						Size = UDim2.new(1, 0, 1, -86),
+						ScrollBarThickness = 4,
+						ScrollBarImageColor3 = C.accent,
+						ScrollBarImageTransparency = 0.4,
+						AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y,
+						CanvasSize = UDim2.new(0, 0, 0, 0),
+						ZIndex = 41,
+						Parent = pnl,
+					}, { pad(16, 20, 20, 20) })
+					local columns = new("Frame", {
+						BackgroundTransparency = 1,
+						AutomaticSize = Enum.AutomaticSize.Y,
+						Size = UDim2.new(1, 0, 0, 0),
+						ZIndex = 41,
+						Parent = listHost,
+					}, { list(Enum.FillDirection.Horizontal, 24) })
+					local function buildColumn()
+						return new("Frame", {
+							BackgroundTransparency = 1,
+							AutomaticSize = Enum.AutomaticSize.Y,
+							Size = UDim2.new(0.5, -12, 0, 0),
+							ZIndex = 41,
+							Parent = columns,
+						}, { list(nil, 14) })
+					end
+					local colL, colR = buildColumn(), buildColumn()
+
+					local itemRefs = {}
+					local function refreshItem(name)
+						local lbl = itemRefs[name]
+						if not lbl then return end
+						lbl.FontFace = mono(selected[name] and W.bold or W.med)
+						tween(lbl, T, { TextColor3 = selected[name] and C.accent or C.label }):Play()
+					end
+					local function selectedList()
+						local out = {}
+						for _, name in ipairs(options) do
+							if selected[name] then table.insert(out, name) end
+						end
+						return out
+					end
+					local function updateSummary()
+						local list_ = selectedList()
+						if #list_ == 0 then
+							summary.Text, summary.TextColor3 = "---", C.dim
+						elseif #list_ == #options then
+							summary.Text, summary.TextColor3 = "All Selected", C.ink2
+						else
+							summary.Text, summary.TextColor3 = table.concat(list_, ", "), C.ink2
+						end
+					end
+					local function fireCallback()
+						updateSummary()
+						if cfg.Callback then task.spawn(cfg.Callback, selectedList()) end
+					end
+
+					for i, name in ipairs(options) do
+						local col = (i % 2 == 1) and colL or colR
+						local lbl = new("TextButton", {
+							BackgroundTransparency = 1,
+							AutoButtonColor = false,
+							FontFace = mono(selected[name] and W.bold or W.med),
+							Text = name,
+							TextColor3 = selected[name] and C.accent or C.label,
+							TextSize = 13,
+							TextXAlignment = Enum.TextXAlignment.Left,
+							Size = UDim2.new(1, 0, 0, 18),
+							ZIndex = 41,
+							Parent = col,
+						})
+						itemRefs[name] = lbl
+						lbl.MouseButton1Click:Connect(function()
+							selected[name] = not selected[name]
+							refreshItem(name)
+							fireCallback()
+						end)
+					end
+					updateSummary()
+
+					selAllBtn.MouseButton1Click:Connect(function()
+						for _, name in ipairs(options) do selected[name] = true; refreshItem(name) end
+						fireCallback()
+					end)
+					deselAllBtn.MouseButton1Click:Connect(function()
+						for _, name in ipairs(options) do selected[name] = false; refreshItem(name) end
+						fireCallback()
+					end)
+
+					local function openModal()
+						modal.Visible = true
+						tween(modal, TQ, { BackgroundTransparency = 0.5 }):Play()
+						tween(pnlScale, TQ, { Scale = 1 }):Play()
+					end
+					local function closeModal()
+						tween(modal, TQ, { BackgroundTransparency = 1 }):Play()
+						local tw = tween(pnlScale, TQ, { Scale = 0.92 })
+						tw:Play(); tw.Completed:Wait()
+						modal.Visible = false
+					end
+					box.MouseButton1Click:Connect(openModal)
+					closeBtn.MouseButton1Click:Connect(closeModal)
+
+					function MS:GetSelected() return selectedList() end
+					function MS:SetSelected(list_)
+						selected = {}
+						for _, v in ipairs(list_ or {}) do selected[v] = true end
+						for _, name in ipairs(options) do refreshItem(name) end
+						fireCallback()
+					end
+					function MS:Open() openModal() end
+					function MS:Close() closeModal() end
+					function MS:SetVisibility(s) row.Visible = s end
+					if Flag then SENZY.Options[Flag] = MS end
+					return MS
+				end
+				Section.CreateMultiSelect = Section.MultiSelect
+
 				--// Header / Label / SubLabel / Paragraph -----------
 				function Section:Header(cfg, Flag)
 					local H = { Settings = cfg }
@@ -2798,6 +3107,13 @@ function SENZY:Demo()
 		Default = Color3.fromRGB(240, 240, 240),
 		Callback = function(c) print("color", c) end,
 	}, "ExampleColor")
+
+	sec2:CreateMultiSelect({
+		Name = "Rarities",
+		Options = { "Common", "Rare", "Epic", "Legendary", "Mythic", "Secret", "God", "Limited" },
+		Default = {},
+		Callback = function(list_) print("rarities:", table.concat(list_, ", ")) end,
+	}, "ExampleRarities")
 
 	sec2:CreateButton({
 		Name = "Fire Notification Types",
